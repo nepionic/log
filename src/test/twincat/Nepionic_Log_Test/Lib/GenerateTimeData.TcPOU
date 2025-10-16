@@ -1,0 +1,168 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="GenerateTimeData" Id="{2ee49bf8-b0a0-4d7f-bfca-d5f6a911b195}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK GenerateTimeData
+VAR_OUTPUT
+	timeAsFileTime : Tc2_Utilities.T_FILETIME;
+	timeAsSystemTime : Tc2_Utilities.TIMESTRUCT;
+	timeAsString : Tc2_System.T_MaxString;
+	utcTimeAsFileTime : Tc2_Utilities.T_FILETIME;
+END_VAR
+VAR
+	_localSystemTime : Tc2_Utilities.FB_LocalSystemTime;
+	_getSystemTime : Tc2_System.GETSYSTEMTIME;
+	_timeZoneInfo : Tc2_Utilities.FB_GetTimeZoneInformation;
+	_localTime : Tc2_Utilities.FB_SystemTimeToTzSpecificLocalTime;
+	_localSystemTimeValid : Tc2_Standard.R_TRIG;
+	_utcTime : Tc2_Utilities.FB_TzSpecificLocalTimeToFileTime;
+END_VAR
+VAR_TEMP
+	utcSystemTime : Tc2_Utilities.TIMESTRUCT;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[_localSystemTime(
+	sNetID	:=	'',
+	bEnable := 	TRUE,
+	dwCycle	:=	1,
+	dwOpt	:=	1,
+	tTimeout:=	DEFAULT_ADS_TIMEOUT
+);
+
+_timeZoneInfo(
+	sNetID := '',
+	bExecute := TRUE,
+	tTimeout := DEFAULT_ADS_TIMEOUT);
+
+_UtcTime(
+	in := SYSTEMTIME_TO_FILETIME(timeAsSystemTime),
+	tzInfo := _timeZoneInfo.tzInfo);
+	
+timeAsSystemTime 	:=	_localSystemTime.systemTime;
+timeAsFileTime 		:= 	SYSTEMTIME_TO_FILETIME(timeAsSystemTime);
+timeAsString 		:= 	SYSTEMTIME_TO_STRING(timeAsSystemTime);
+utcTimeAsFileTime	:= 	_utcTime.out;
+
+_localSystemTimeValid(CLK := _localSystemTime.bValid);
+]]></ST>
+    </Implementation>
+    <Property Name="Done" Id="{f6f0d291-fb85-4faf-ad58-d240d73a8c2f}">
+      <Declaration><![CDATA[{attribute 'monitoring':='call'}
+PROPERTY Done : BOOL
+]]></Declaration>
+      <Get Name="Get" Id="{ff6aacc6-3e96-4e02-abbe-ac47e189be1e}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Done := _localSystemTimeValid.Q;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="ReplaceFormatPlaceholder" Id="{806f74e8-d165-42e6-b13f-0a5b29ec6a29}">
+      <Declaration><![CDATA[// Replaces placeholders in format string by the actual time values
+METHOD PRIVATE ReplaceFormatPlaceholder : STRING
+VAR_INPUT
+	Format : STRING;
+	Length : INT;
+	TimeType : STRING(1);
+END_VAR
+VAR_INST
+	i : INT;
+	replaceString : STRING;
+	timeString : STRING;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF    TimeType = 'Y' 	THEN timeString := TO_STRING(timeAsSystemTime.wYear); 
+ELSIF TimeType = 'M' 	THEN timeString := TO_STRING(timeAsSystemTime.wMonth); 
+ELSIF TimeType = 'D' 	THEN timeString := TO_STRING(timeAsSystemTime.wDay); 
+ELSIF TimeType = 'h' 	THEN timeString := TO_STRING(timeAsSystemTime.wHour); 
+ELSIF TimeType = 'm' 	THEN timeString := TO_STRING(timeAsSystemTime.wMinute); 
+ELSIF TimeType = 's' 	THEN timeString := TO_STRING(timeAsSystemTime.wSecond); 
+ELSIF TimeType = 'i' 	THEN timeString := TO_STRING(timeAsSystemTime.wMilliseconds); 
+ELSE
+  timeString:='';
+END_IF
+
+replaceString := '';
+
+IF Length > LEN(timeString) THEN
+	FOR i:=1 TO Length - LEN(timeString) DO
+		replaceString := Tc2_Standard.CONCAT(replaceString, '0');
+	END_FOR
+	replaceString := Tc2_Standard.CONCAT(replaceString, timeString);
+ELSE
+	replaceString := RIGHT(timeString, Length);
+END_IF
+
+ReplaceFormatPlaceholder := REPLACE(Format, replaceString, Length, FIND(Format, TimeType));]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="ToString" Id="{d1ecd6cc-de9c-4773-b5cf-deef34c5fb14}">
+      <Declaration><![CDATA[// Returns a formatted string containing the actual time information 
+//	Y : year
+//	M : month
+// 	D : day
+//  h : hour 
+//  m : minute
+//  s : second
+//  i : millisecond
+// 
+// Example: _YYMMDD-hh:mm:ss:iii_
+// => _20210812-12:30:22:123_
+METHOD ToString : Tc2_System.T_MaxString
+VAR_INPUT
+	Format : STRING;
+END_VAR
+VAR_INST
+	inputString : STRING;
+	char : STRING(1);
+	formattedString : Tc2_System.T_MaxString;
+END_VAR
+VAR
+	year : INT := 0;
+	month : INT := 0;
+	day : INT := 0;
+	hour : INT := 0;
+	minute : INT := 0;
+	second : INT := 0;
+	millisecond : INT := 0;
+END_VAR
+VAR CONSTANT
+	VALID_FORMAT : STRING := 'YMDhms';
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Parses "Format" and returns a adequatly formatted string containing the time information
+inputString := Format;
+
+WHILE LEN(inputString) > 0 DO
+	char := LEFT(inputString, 1);
+	
+	IF    char = 'Y' THEN 	year := year + 1;
+	ELSIF char = 'M' THEN	month := month + 1;
+	ELSIF char = 'D' THEN	day := day + 1;
+	ELSIF char = 'h' THEN	hour := hour + 1;
+	ELSIF char = 'm' THEN	minute := minute + 1;
+	ELSIF char = 's' THEN 	second := second + 1;
+	ELSIF char = 'i' THEN 	millisecond := millisecond + 1;
+	END_IF
+	
+	inputString := DELETE(inputString, 1, 1);
+END_WHILE
+
+formattedString := ReplaceFormatPlaceholder(Format, year, 'Y');
+formattedString := ReplaceFormatPlaceholder(formattedString, month, 'M');
+formattedString := ReplaceFormatPlaceholder(formattedString, day, 'D');
+formattedString := ReplaceFormatPlaceholder(formattedString, hour, 'h');
+formattedString := ReplaceFormatPlaceholder(formattedString, minute, 'm');
+formattedString := ReplaceFormatPlaceholder(formattedString, second, 's');
+formattedString := ReplaceFormatPlaceholder(formattedString, millisecond, 'i');
+
+ToString := formattedString;
+
+
+]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>
