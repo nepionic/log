@@ -3,7 +3,7 @@
   <PropertyGroup>
     <FileVersion>1.0.0.0</FileVersion>
     <SchemaVersion>2.0</SchemaVersion>
-    <ProjectGuid>{1ada155e-58c6-4872-9f4d-6d7fa49ee430}</ProjectGuid>
+    <ProjectGuid>{fc4c4a46-bbbe-4156-a13b-a37c46cdf94a}</ProjectGuid>
     <SubObjectsSortedByName>true</SubObjectsSortedByName>
     <DownloadApplicationInfo>true</DownloadApplicationInfo>
     <WriteProductVersion>false</WriteProductVersion>
@@ -11,21 +11,20 @@
     <Name>Nepionic_Log</Name>
     <ProgramVersion>3.1.4026.20</ProgramVersion>
     <WriteBookmarksToFile>true</WriteBookmarksToFile>
-    <Application>{1c97fd65-5cb6-4995-9d3b-303d56e63355}</Application>
-    <TypeSystem>{bc65c3c0-9afb-4d6b-96e5-f9461d583361}</TypeSystem>
-    <Implicit_Task_Info>{32767312-81f9-4d31-ad91-110f2ce17b0d}</Implicit_Task_Info>
-    <Implicit_KindOfTask>{384f13e5-bd32-46ba-bd91-4508198c2493}</Implicit_KindOfTask>
-    <Implicit_Jitter_Distribution>{628aa2b1-6519-476c-8f59-ed51343b778b}</Implicit_Jitter_Distribution>
-    <LibraryReferences>{88c2451b-971e-407b-b848-4fd6e7556a81}</LibraryReferences>
+    <Application>{67553fcf-27ff-4f0c-ad83-b02def604d5d}</Application>
+    <TypeSystem>{dab0d6f8-ca80-47bf-a533-d53fbff51dc6}</TypeSystem>
+    <Implicit_Task_Info>{f1a73677-9484-4f77-9438-08abdd1364ab}</Implicit_Task_Info>
+    <Implicit_KindOfTask>{bff25e1c-d8b8-4645-9464-99a224f827a6}</Implicit_KindOfTask>
+    <Implicit_Jitter_Distribution>{b5a5c85e-0ef3-4d92-a0d8-9bfa7b9b122c}</Implicit_Jitter_Distribution>
+    <LibraryReferences>{ab085feb-e340-49c5-ab63-6d039a5cbc89}</LibraryReferences>
     <Company>Nepionic</Company>
     <Released>false</Released>
     <Title>Nepionic_Log</Title>
     <ProjectVersion>0.1.0</ProjectVersion>
+    <Author>Nepionic</Author>
     <DefaultNamespace>Nepionic_Log</DefaultNamespace>
     <Placeholder>Nepionic_Log</Placeholder>
-    <DocFormat>TcDocGen</DocFormat>
     <VirtualLibrary>true</VirtualLibrary>
-    <Author>Nepionic</Author>
     <LibraryCategories>
       <LibraryCategory xmlns="">
         <Id>{2fddf63d-58dd-4964-b1fd-df3c84328371}</Id>
@@ -37,11 +36,19 @@
       <Id xmlns="">{2fddf63d-58dd-4964-b1fd-df3c84328371}</Id>
     </SelectedLibraryCategories>
   </PropertyGroup>
+  <ItemGroup>
+    <Folder Include="NewFolder1" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Nepionic_Log.tmc">
+      <SubType>Content</SubType>
+    </None>
+  </ItemGroup>
   <ProjectExtensions>
     <PlcProjectOptions>
       <XmlArchive>
-        <Data>
-          <o xml:space="preserve" t="OptionKey">
+  <Data>
+    <o xml:space="preserve" t="OptionKey">
       <v n="Name">"&lt;ProjectRoot&gt;"</v>
       <d n="SubKeys" t="Hashtable" ckt="String" cvt="OptionKey">
         <v>{192FAD59-8248-4824-A8DE-9177C94C195A}</v>
@@ -99,6 +106,12 @@
             <v>410,5410</v>
           </d>
         </o>
+        <v>{eeeeeeee-3909-4298-8022-501ac3238667}</v>
+        <o>
+          <v n="Name">"{eeeeeeee-3909-4298-8022-501ac3238667}"</v>
+          <d n="SubKeys" t="Hashtable" />
+          <d n="Values" t="Hashtable" />
+        </o>
         <v>{F66C7017-BDD8-4114-926C-81D6D687E35F}</v>
         <o>
           <v n="Name">"{F66C7017-BDD8-4114-926C-81D6D687E35F}"</v>
@@ -111,14 +124,14 @@
       </d>
       <d n="Values" t="Hashtable" />
     </o>
-        </Data>
-        <TypeList>
-          <Type n="Boolean">System.Boolean</Type>
-          <Type n="Hashtable">System.Collections.Hashtable</Type>
-          <Type n="OptionKey">{54dd0eac-a6d8-46f2-8c27-2f43c7e49861}</Type>
-          <Type n="String">System.String</Type>
-        </TypeList>
-      </XmlArchive>
+  </Data>
+  <TypeList>
+    <Type n="Boolean">System.Boolean</Type>
+    <Type n="Hashtable">System.Collections.Hashtable</Type>
+    <Type n="OptionKey">{54dd0eac-a6d8-46f2-8c27-2f43c7e49861}</Type>
+    <Type n="String">System.String</Type>
+  </TypeList>
+</XmlArchive>
     </PlcProjectOptions>
   </ProjectExtensions>
 </Project>

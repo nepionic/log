@@ -9,7 +9,7 @@
     <WriteProductVersion>false</WriteProductVersion>
     <GenerateTpy>false</GenerateTpy>
     <Name>Nepionic_Log_Test</Name>
-    <ProgramVersion>3.1.4026.19</ProgramVersion>
+    <ProgramVersion>3.1.4026.20</ProgramVersion>
     <WriteBookmarksToFile>true</WriteBookmarksToFile>
     <Application>{2e3e4417-6fea-4eea-b327-e8451418a7ce}</Application>
     <TypeSystem>{a64293f3-fc51-4514-967c-4e8836195e31}</TypeSystem>
@@ -20,6 +20,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Folder Include="Lib" />
+    <Folder Include="Lib\Syslog" />
     <Folder Include="Programs" />
     <Folder Include="Tasks" />
     <Folder Include="Tests" />
@@ -85,6 +86,9 @@
     <Compile Include="Lib\StringBuilder.TcPOU">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Lib\Syslog\SyslogClient.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Lib\TcLog.TcPOU">
       <SubType>Code</SubType>
     </Compile>
@@ -116,11 +120,24 @@
       <Namespace>Tc2_System</Namespace>
       <QualifiedOnly>true</QualifiedOnly>
     </PlaceholderReference>
+    <PlaceholderReference Include="Tc2_TcpIp">
+      <DefaultResolution>Tc2_TcpIp, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc2_TcpIp</Namespace>
+    </PlaceholderReference>
     <PlaceholderReference Include="Tc2_Utilities">
       <DefaultResolution>Tc2_Utilities, * (Beckhoff Automation GmbH)</DefaultResolution>
       <Namespace>Tc2_Utilities</Namespace>
       <QualifiedOnly>true</QualifiedOnly>
     </PlaceholderReference>
+    <PlaceholderReference Include="Tc3_Module">
+      <DefaultResolution>Tc3_Module, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc3_Module</Namespace>
+    </PlaceholderReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Nepionic_Log_Test.tmc">
+      <SubType>Content</SubType>
+    </None>
   </ItemGroup>
   <ProjectExtensions>
     <PlcProjectOptions>
@@ -183,6 +200,12 @@
             <v>DisabledWarningIds</v>
             <v>410,5410</v>
           </d>
+        </o>
+        <v>{eeeeeeee-3909-4298-8022-501ac3238667}</v>
+        <o>
+          <v n="Name">"{eeeeeeee-3909-4298-8022-501ac3238667}"</v>
+          <d n="SubKeys" t="Hashtable" />
+          <d n="Values" t="Hashtable" />
         </o>
         <v>{F66C7017-BDD8-4114-926C-81D6D687E35F}</v>
         <o>

@@ -1,0 +1,189 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="SyslogClient" Id="{7359dfd2-c3b4-4b86-b7d1-8a60fcdc8ce4}" SpecialFunc="None">
+    <Declaration><![CDATA[FUNCTION_BLOCK SyslogClient
+VAR
+	// Properties
+	_hostname : STRING := '127.0.0.1';
+	_port : UINT := 514;
+	app_name : STRING(32) := 'TwinCAT_PLC';
+    
+	// Internal Logic
+	socket_handle : Tc2_TcpIp.T_HSocket;
+	socket_create : Tc2_TcpIp.Fb_SocketUdpCreate;
+	udp_send : Tc2_TcpIp.Fb_SocketUdpSendTo;
+    
+    log_payload : STRING(512);
+    timestamp : STRING(32);
+    get_time : Tc2_Utilities.NT_GetTime;
+    
+    state : INT := 0;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Property Name="AppName" Id="{9b429889-9e87-47fd-9646-49dda0d65ca0}">
+      <Declaration><![CDATA[PROPERTY PUBLIC AppName : STRING(255)]]></Declaration>
+      <Get Name="Get" Id="{fa0cf1cc-2189-4879-886e-c5b59714ed1c}">
+        <Declaration><![CDATA[PUBLIC]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[AppName := app_name;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{34a5d94a-f5ea-45b2-a00e-83867e180116}">
+        <Declaration><![CDATA[PUBLIC]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[app_name := AppName;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="Execute" Id="{245cb52c-f5bd-49a3-9e2e-4116752e7e0f}">
+      <Declaration><![CDATA[METHOD PUBLIC Execute]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CASE state OF
+    0: // Idle
+        
+    10: // Fetch Timestamp
+        get_time(START := TRUE);
+        IF NOT get_time.BUSY AND NOT get_time.ERR THEN
+            UpdateTimestamp();
+            get_time(START := FALSE);
+            state := 20;
+        ELSIF get_time.ERR THEN
+            get_time(START := FALSE);
+            state := 0;
+        END_IF
+
+    20: // Maintain Socket
+        IF socket_handle.handle = 0 THEN
+			socket_create(
+				bExecute := TRUE,
+				sLocalHost := _hostname,
+				nLocalPort := 4444
+			);
+			IF NOT socket_create.bBusy AND NOT socket_create.bError THEN
+				socket_handle := socket_create.hSocket;
+				socket_create(bExecute := FALSE);
+			END_IF
+		ELSE
+			state := 30;
+		END_IF
+
+    30: // Dispatch UDP
+        udp_send(
+            hSocket := socket_handle, 
+            sRemoteHost := _hostname, 
+            nRemotePort := _port,
+            pSrc := ADR(log_payload), 
+            cbLen := INT_TO_UDINT(Tc2_Standard.Len(log_payload)), 
+            bExecute := TRUE
+		);
+            
+        IF NOT udp_send.bBusy AND NOT udp_send.bError THEN
+            udp_send(bExecute := FALSE);
+            state := 0; 
+        END_IF
+END_CASE]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FB_Init" Id="{98617cea-4c75-468c-a075-9dda44022564}">
+      <Declaration><![CDATA[//FB_Init is always available implicitly and it is used primarily for initialization.
+//The return value is not evaluated. For a specific influence, you can also declare the
+//methods explicitly and provide additional code there with the standard initialization
+//code. You can evaluate the return value.
+METHOD FB_Init: BOOL
+VAR_INPUT
+    bInitRetains: BOOL; // TRUE: the retain variables are initialized (reset warm / reset cold)
+    bInCopyCode: BOOL;  // TRUE: the instance will be copied to the copy code afterward (online change)
+	hostname : STRING(15);
+	port : UINT;   
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^._hostname := hostname;
+THIS^._port := port;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Hostname" Id="{246ee69b-8939-43a1-b324-dd6464295719}">
+      <Declaration><![CDATA[PROPERTY PUBLIC Hostname : STRING(15)]]></Declaration>
+      <Get Name="Get" Id="{2c994bd3-c0ed-46c1-af5d-2bbfbb01b72e}">
+        <Declaration><![CDATA[PUBLIC]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Hostname := _hostname;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{5ab30845-6002-4deb-bf59-673d099c4895}">
+        <Declaration><![CDATA[PUBLIC]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[_hostname := Hostname;
+ResetConnection();]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Property Name="Port" Id="{0125151f-b86c-4646-b0db-91e98239cb85}">
+      <Declaration><![CDATA[PROPERTY PUBLIC Port : UINT]]></Declaration>
+      <Get Name="Get" Id="{e6e8eda1-0220-4476-8622-75e38b0e7b25}">
+        <Declaration><![CDATA[PUBLIC]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Port := _port;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{8b402a8a-a0f7-4c83-8a1d-f745d1d980f4}">
+        <Declaration><![CDATA[PUBLIC]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[_port := Port;
+ResetConnection();]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="ResetConnection" Id="{19e0d165-8dc0-4721-bf51-d36323c399b3}">
+      <Declaration><![CDATA[METHOD PRIVATE ResetConnection]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SendLog" Id="{ec5aef03-e894-49d4-9442-3d489edf9d7f}">
+      <Declaration><![CDATA[METHOD PUBLIC SendLog
+VAR_INPUT
+    severity : INT; // 0: Emerg ... 7: Debug
+    message  : STRING(255);
+END_VAR
+VAR_INST
+    priority : INT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Facility 1 (User) * 8 + severity
+priority := 8 + severity;
+
+// Build RFC 5424 String: <PRI>1 TIMESTAMP HOSTNAME APPNAME - - - MESSAGE
+log_payload := Tc2_System.Concat('<', INT_TO_STRING(priority));
+log_payload := Tc2_System.Concat(log_payload, '>1 ');
+log_payload := Tc2_System.Concat(log_payload, timestamp);
+log_payload := Tc2_System.Concat(log_payload, ' ');
+log_payload := Tc2_System.Concat(log_payload, hostname);
+log_payload := Tc2_System.Concat(log_payload, ' ');
+log_payload := Tc2_System.Concat(log_payload, app_name);
+log_payload := Tc2_System.Concat(log_payload, ' - - - ');
+log_payload := Tc2_System.Concat(log_payload, message);
+
+state := 10;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="UpdateTimestamp" Id="{2c914bf6-a245-4835-9b22-9234deea4078}">
+      <Declaration><![CDATA[METHOD PRIVATE UpdateTimestamp]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[timestamp := WORD_TO_STRING(get_time.TimeStr.wYear);
+timestamp := Tc2_System.Concat(timestamp, '-');
+timestamp := Tc2_System.Concat(timestamp, Tc2_System.RIGHT(Tc2_System.Concat('0', WORD_TO_STRING(get_time.TimeStr.wMonth)), 2));
+timestamp := Tc2_System.Concat(timestamp, '-');
+timestamp := Tc2_System.Concat(timestamp, Tc2_System.RIGHT(Tc2_System.Concat('0', WORD_TO_STRING(get_time.TimeStr.wDay)), 2));
+timestamp := Tc2_System.Concat(timestamp, 'T');
+timestamp := Tc2_System.Concat(timestamp, Tc2_System.RIGHT(Tc2_System.Concat('0', WORD_TO_STRING(get_time.TimeStr.wHour)), 2));
+timestamp := Tc2_System.Concat(timestamp, ':');
+timestamp := Tc2_System.Concat(timestamp, Tc2_System.RIGHT(Tc2_System.Concat('0', WORD_TO_STRING(get_time.TimeStr.wMinute)), 2));
+timestamp := Tc2_System.Concat(timestamp, ':');
+timestamp := Tc2_System.Concat(timestamp, Tc2_System.RIGHT(Tc2_System.Concat('0', WORD_TO_STRING(get_time.TimeStr.wSecond)), 2));
+timestamp := Tc2_System.Concat(timestamp, 'Z');]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>
