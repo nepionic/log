@@ -1,0 +1,99 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="AnyToString" Id="{365a04f4-2bcd-4b73-aeb3-6a9bc8016daf}" SpecialFunc="None">
+    <Declaration><![CDATA[/// Converts value of input data to string, where the input type can be any of 
+/// the standard data types.
+FUNCTION PUBLIC AnyToString : Tc2_System.T_MaxString
+VAR_INPUT
+	data : ANY;
+END_VAR
+VAR
+	_any_byte : POINTER TO BYTE;
+	_any_usint : POINTER TO USINT;
+	_any_int : POINTER TO INT;
+	_any_uint : POINTER TO UINT;
+	_any_udInt : POINTER TO UDINT;
+	_any_sint : POINTER TO SINT;
+	_any_dint : POINTER TO DINT;
+	_any_lint : POINTER TO LINT;
+	_any_ulint : POINTER TO ULINT;
+	_any_word : POINTER TO WORD;
+	_any_lword : POINTER TO LWORD;
+	_any_real : POINTER TO REAL;
+	_any_lreal : POINTER TO LREAL;
+	_any_date_and_time : POINTER TO DATE_AND_TIME;
+	_any_date : POINTER TO DATE;
+	_any_time : POINTER TO TIME;
+	_any_wstring : POINTER TO WSTRING;
+	_any_time_of_day : POINTER TO TOD;
+	_any_string : POINTER TO STRING;
+	_string : Tc2_System.T_MaxString;
+	_wstring : WSTRING;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[IF data.TypeClass = __SYSTEM.Type_Class.Type_Byte THEN
+	_any_byte := data.pValue;
+	AnyToString := BYTE_TO_STRING(_any_byte^);
+ELSIF data.TypeClass = __SYSTEM.Type_Class.Type_Int THEN
+	_any_int := data.pValue;
+	AnyToString := INT_TO_STRING(_any_int^);
+ELSIF data.TypeClass = __SYSTEM.Type_Class.Type_UInt THEN
+	_any_uint := data.pValue;
+	AnyToString := UINT_TO_STRING(_any_uint^);
+ELSIF data.TypeClass = __SYSTEM.Type_Class.Type_UDint THEN
+	_any_udint := data.pValue;
+	AnyToString := UDINT_TO_STRING(_any_udint^);
+ELSIF data.TypeClass = __SYSTEM.Type_Class.Type_SInt THEN
+	_any_sint := data.pValue;
+	AnyToString := SINT_TO_STRING(_any_sint^);
+ELSIF data.TypeClass = __SYSTEM.Type_Class.Type_USint THEN
+	_any_usint := data.pValue;
+	AnyToString := USINT_TO_STRING(_any_usint^);
+ELSIF data.TypeClass = __SYSTEM.Type_Class.Type_DInt THEN
+	_any_dint := data.pValue;
+	AnyToString := DINT_TO_STRING(_any_dint^);
+ELSIF data.TypeClass = __SYSTEM.Type_Class.Type_LInt THEN
+	_any_lint := data.pValue;
+	AnyToString := LINT_TO_STRING(_any_lint^);
+ELSIF data.TypeClass = __SYSTEM.Type_Class.Type_ULint THEN
+	_any_ulint := data.pValue;
+	AnyToString := ULINT_TO_STRING(_any_ulint^);
+ELSIF data.TypeClass = __SYSTEM.Type_Class.Type_Word THEN
+	_any_word := data.pValue;
+	AnyToString := WORD_TO_STRING(_any_word^);
+ELSIF data.TypeClass = __SYSTEM.Type_Class.Type_LWord THEN
+	_any_lword := data.pValue;
+	AnyToString := LWORD_TO_STRING(_any_lword^);
+ELSIF data.TypeClass = __SYSTEM.Type_Class.Type_Real THEN
+	_any_real := data.pValue;
+	AnyToString := REAL_TO_STRING(_any_real^);
+ELSIF data.TypeClass = __SYSTEM.Type_Class.Type_LReal THEN
+	_any_lreal := data.pValue;
+	AnyToString := LREAL_TO_STRING(_any_lreal^);
+ELSIF data.TypeClass = __SYSTEM.Type_Class.Type_DateAndTime THEN
+	_any_date_and_time := data.pValue;
+	AnyToString := DT_TO_STRING(_any_date_and_time^);  
+ELSIF data.TypeClass = __SYSTEM.Type_Class.Type_Date THEN
+	_any_date := data.pValue;
+	AnyToString := DATE_TO_STRING(_any_date^);
+ELSIF data.TypeClass = __SYSTEM.Type_Class.Type_Time THEN
+	_any_time := data.pValue;
+	AnyToString := TIME_TO_STRING(_any_time^);
+ELSIF data.TypeClass = __SYSTEM.Type_Class.Type_String THEN
+	_any_string := data.pValue;
+	AnyToString := _any_string^;
+ELSIF data.TypeClass = __SYSTEM.Type_Class.Type_WString THEN
+	_any_wstring := data.pValue;
+	_wString := _any_wstring^;
+	Tc2_Utilities.WSTRING_TO_STRING2(ADR(_string), ADR(_wstring), SIZEOF(_wstring));
+	AnyToString := _string;
+ELSIF data.TypeClass = __SYSTEM.Type_Class.Type_TimeOfDay THEN
+	_any_time_of_day := data.pValue;
+	AnyToString := TOD_TO_STRING(_any_time_of_day^);
+ELSE
+	AnyToString := TO_STRING(data.pValue^);
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

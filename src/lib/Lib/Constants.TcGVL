@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <GVL Name="Constants" Id="{3b761edc-df46-49aa-8bfe-0383d01cdf00}" ParameterList="True">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+VAR_GLOBAL CONSTANT
+	/// Fifo overhead needed to manage the string buffer
+	FifoOverhead : UDINT := 10;
+	/// Buffer size of temporary buffer used to persist all log messages in one cycle. 
+	BufferSize : UDINT := (100 * (Tc2_System.MAX_STRING_LENGTH + FifoOverhead));
+END_VAR]]></Declaration>
+  </GVL>
+</TcPlcObject>

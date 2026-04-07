@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="ErrorCodes" Id="{32e4ff1c-057c-497e-acf1-8db50da73050}">
+    <Declaration><![CDATA[/// Provides error codes for TcLogCore
+{attribute 'qualified_only'}
+{attribute 'strict'}
+{attribute 'to_string'}
+TYPE ErrorCodes : 
+(
+	None := 0,
+	OpeningFileFailed,
+	WritingToFileFailed,
+	ClosingFileFailed,
+	EnumeratingFilesInSpecifiedDirectoryFailed,
+	DeletingFileFailed,
+	FifoOverflow
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

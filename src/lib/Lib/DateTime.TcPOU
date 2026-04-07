@@ -1,0 +1,221 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="DateTime" Id="{24d70985-8975-4994-8bba-1d73fd510f54}" SpecialFunc="None">
+    <Declaration><![CDATA[/// Generate time data in different formats.
+{attribute: 'hide_all_locals'}
+FUNCTION_BLOCK PUBLIC DateTime
+VAR
+  local_system_time : Tc2_Utilities.FB_LocalSystemTime;
+  get_system_time : Tc2_System.GetSystemTime;
+  time_zone_info : Tc2_Utilities.FB_GetTimeZoneInformation;
+  local_Time : Tc2_Utilities.FB_SystemTimeToTzSpecificLocalTime;
+  local_system_time_valid : Tc2_Standard.R_Trig;
+  utc_time : Tc2_Utilities.FB_TzSpecificLocalTimeToFileTime;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Get local system time
+local_system_time(
+	sNetID  :=  '',
+	bEnable :=  TRUE,
+	dwCycle :=  1,
+	dwOpt :=  1,
+	tTimeout:= Tc2_System.Default_Ads_Timeout
+);
+
+// Get timezone information
+time_zone_info(
+	sNetID := '',
+	bExecute := TRUE,
+	tTimeout := Tc2_System.Default_Ads_Timeout
+);
+
+// Convert local time to utc time
+utc_time(
+	in := THIS^.AsLocalFileTime,
+	tzInfo := time_zone_info.tzInfo
+);
+  
+// Finished retrieving time data
+local_system_time_valid(Clk := local_system_time.bValid);]]></ST>
+    </Implementation>
+    <Property Name="AsLocalFileTime" Id="{700deb9e-3050-48cf-b6dd-d5ce614424e4}">
+      <Declaration><![CDATA[/// Returns local time as `Tc2_Utilities.T_FILETIME`.
+{attribute 'monitoring':='variable'}
+PROPERTY AsLocalFileTime : Tc2_Utilities.T_FILETIME
+]]></Declaration>
+      <Get Name="Get" Id="{953b2b8a-2a91-4249-b8d2-ee9f7fd5128a}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[AsLocalFileTime := SYSTEMTIME_TO_FILETIME(THIS^.AsLocalSystemTime);]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="AsLocalSystemTime" Id="{a97cae82-27cd-48cf-8549-ae951a411956}">
+      <Declaration><![CDATA[/// Returns local time as `Tc2_Utilities.TIMESTRUCT`.
+{attribute 'monitoring':='variable'}
+PROPERTY AsLocalSystemTime : Tc2_Utilities.TIMESTRUCT
+]]></Declaration>
+      <Get Name="Get" Id="{b1ffe7e8-8ae9-4b9d-a206-ac1abf117ce0}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[AsLocalSystemTime := local_system_time.systemTime;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="AsLocalSystemTimeString" Id="{f5873b9d-59d7-4472-924d-485937a100d3}">
+      <Declaration><![CDATA[/// Returns local time as string.
+{attribute 'monitoring':='variable'}
+PROPERTY AsLocalSystemTimeString : Tc2_System.T_MAXSTRING
+]]></Declaration>
+      <Get Name="Get" Id="{b5533140-4307-4571-9ed3-2005a4a5c8c1}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[AsLocalSystemTimeString := Tc2_Utilities.SYSTEMTIME_TO_STRING(THIS^.AsLocalSystemTime);]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="AsUtcFileTime" Id="{e05aa644-18c4-4984-929a-973c8c508b01}">
+      <Declaration><![CDATA[/// Returns UTC time as `Tc2_Utilities.T_FILETIME`.
+{attribute 'monitoring':='variable'}
+PROPERTY AsUtcFileTime : Tc2_Utilities.T_FILETIME
+]]></Declaration>
+      <Get Name="Get" Id="{45eba07e-60c5-42a9-a055-c03bc97e46f7}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[AsUtcFileTime := utc_time.out;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Property Name="Done" Id="{7daf1f6e-01c2-4543-bfcf-bbeeab64df7c}">
+      <Declaration><![CDATA[/// When calling `DateTime` the first time, it takes some time until all time and timezone information is available.
+/// `Done` is `TRUE` for one cycle, once all the data is ready. 
+{attribute 'monitoring':='call'}
+PROPERTY Done : BOOL
+]]></Declaration>
+      <Get Name="Get" Id="{2af34202-4261-406f-a908-751802beede6}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Done := local_system_time_valid.Q;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="ReplaceFormatPlaceholder" Id="{f741375e-e21c-4960-9ab3-6d58e74f986f}">
+      <Declaration><![CDATA[// Replaces placeholders in format string by the actual time values.
+{attribute 'hide_all_locals'}
+{attribute 'hide'}
+METHOD PRIVATE ReplaceFormatPlaceholder : STRING
+VAR_INPUT
+  format : STRING;
+  length : INT;
+  timeType : STRING(1);
+END_VAR
+VAR_INST
+  i : INT;
+  replaceString : STRING;
+  timeString : STRING;
+END_VAR
+VAR
+  localSystemTime : Tc2_Utilities.TIMESTRUCT;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[localSystemTime := THIS^.AsLocalSystemTime;
+
+IF    timeType = 'Y'  THEN timeString := TO_STRING(localSystemTime.wYear); 
+ELSIF timeType = 'M'  THEN timeString := TO_STRING(localSystemTime.wMonth); 
+ELSIF timeType = 'D'  THEN timeString := TO_STRING(localSystemTime.wDay); 
+ELSIF timeType = 'h'  THEN timeString := TO_STRING(localSystemTime.wHour); 
+ELSIF timeType = 'm'  THEN timeString := TO_STRING(localSystemTime.wMinute); 
+ELSIF timeType = 's'  THEN timeString := TO_STRING(localSystemTime.wSecond); 
+ELSIF timeType = 'i'  THEN timeString := TO_STRING(localSystemTime.wMilliseconds); 
+ELSE
+  timeString:='';
+END_IF
+
+replaceString := '';
+
+IF length > Tc2_Standard.LEN(timeString) THEN
+  FOR i:=1 TO length - Tc2_Standard.LEN(timeString) DO
+    replaceString := Tc2_Standard.CONCAT(replaceString, '0');
+  END_FOR
+  replaceString := Tc2_Standard.CONCAT(replaceString, timeString);
+ELSE
+  replaceString := Tc2_Standard.RIGHT(timeString, length);
+END_IF
+
+ReplaceFormatPlaceholder := Tc2_Standard.REPLACE(format, replaceString, length, Tc2_Standard.FIND(format, timeType));]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="ToFormatString" Id="{df77e8d4-f348-4962-90ee-212e24fb75fe}">
+      <Declaration><![CDATA[/// Returns a formatted string containing the actual time information 
+/// - `Y` : year
+/// - `M` : month
+/// - `D` : day
+/// - `h` : hour 
+/// - `m` : minute
+/// - `s` : second
+/// - `i` : millisecond
+/// 
+/// Example:    
+/// _YYMMDD-hh:mm:ss:iii_   
+/// => _20210812-12:30:22:123_
+{attribute 'hide_all_locals'}
+METHOD ToFormatString : Tc2_System.T_MaxString
+VAR_INPUT
+  /// Format the timestamp should have.
+  format : STRING;
+END_VAR
+VAR_INST
+  inputString : STRING;
+  c : STRING(1);
+  formattedString : Tc2_System.T_MaxString;
+END_VAR
+VAR
+  year : INT := 0;
+  month : INT := 0;
+  day : INT := 0;
+  hour : INT := 0;
+  minute : INT := 0;
+  second : INT := 0;
+  millisecond : INT := 0;
+END_VAR
+VAR CONSTANT
+  ValidFormat : STRING := 'YMDhms';
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Parses "format" and returns a adequatly formatted string containing the time information
+inputString := format;
+
+WHILE Tc2_Standard.LEN(inputString) > 0 DO
+  c := Tc2_Standard.LEFT(inputString, 1);
+  
+  IF    c = 'Y' THEN year := year + 1;
+  ELSIF c = 'M' THEN month := month + 1;
+  ELSIF c = 'D' THEN day := day + 1;
+  ELSIF c = 'h' THEN hour := hour + 1;
+  ELSIF c = 'm' THEN minute := minute + 1;
+  ELSIF c = 's' THEN second := second + 1;
+  ELSIF c = 'i' THEN millisecond := millisecond + 1;
+  END_IF
+  
+  inputString := Tc2_Standard.DELETE(inputString, 1, 1);
+END_WHILE
+
+formattedString := ReplaceFormatPlaceholder(format, year, 'Y');
+formattedString := ReplaceFormatPlaceholder(formattedString, month, 'M');
+formattedString := ReplaceFormatPlaceholder(formattedString, day, 'D');
+formattedString := ReplaceFormatPlaceholder(formattedString, hour, 'h');
+formattedString := ReplaceFormatPlaceholder(formattedString, minute, 'm');
+formattedString := ReplaceFormatPlaceholder(formattedString, second, 's');
+formattedString := ReplaceFormatPlaceholder(formattedString, millisecond, 'i');
+
+ToFormatString := formattedString;
+
+
+]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

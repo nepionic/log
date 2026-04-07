@@ -1,0 +1,21 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="DeleteFilesState" Id="{8fb97fc2-96c4-41d9-b3b8-2e0eb684eae6}">
+    <Declaration><![CDATA[// States for state machine used in `DeleteOldFiles`.
+{attribute 'qualified_only'}
+{attribute 'strict'}
+TYPE INTERNAL DeleteFilesState :
+(
+	Idle := 0,
+  SearchNextFile,
+  WaitUntilExecutionDone,
+  ProcessFoundFiles,
+  CheckIfFileIsDirectory,
+  CheckFileTime,
+  DeleteFile,
+  FileDeleted
+);
+END_TYPE
+]]></Declaration>
+  </DUT>
+</TcPlcObject>

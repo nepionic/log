@@ -1,0 +1,357 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="TcLog" Id="{f93a3964-d66b-4826-8e8d-b40b7ac25679}" SpecialFunc="None">
+    <Declaration><![CDATA[/// `TcLog` is the client side of the logger.  
+///
+/// It is used to send the logs to `TcLogCore`. Typically, it is instantiated
+/// once in each `FUNCTION_BLOCK` or `PROGRAM` where logging is done. The same 
+/// instance can then be used for all logging within that POU. 
+///
+/// `TcLog` implements a string builder that facilitates the compilation of the log
+/// message without the need for external data type conversions or multiple chained `CONCAT` calls.
+/// See the method section for more information.
+///
+/// The last method to call after the log message has been built is one of ´[Debug|Information|Warning|Error|Fatal]`. 
+/// This sets the log level of the message and sends it off to the log message queue of `TcLogCore` where it will
+/// be processed according to its configuration.
+{attribute 'hide_all_locals'}
+{attribute 'reflection'} 
+FUNCTION_BLOCK TcLog IMPLEMENTS ILog
+VAR
+  _logConditionSatisfied : BOOL; // flag that indicates, whether log condition has been satisfied.
+                                // Logging will only be carried out it this evaluates to TRUE.                    
+  _logDataInitialized : BOOL; // flag that indicate, whether log data has been initialized.
+                             // Necessary for configuration methods to provide a fluent interface.                            
+  _logData : Tc2_System.T_MaxString; // contains message to be logged.
+  _usedLogger : LogCore;
+  {attribute 'instance-path'} 
+  {attribute 'noinit'} 
+  _instancePath : STRING; // contains instance path
+END_VAR
+VAR_STAT
+  {attribute 'hide'}
+  s_loggerSingletonInstance : LogCore; // Wires up TcLog ("Client") to TcLogCore ("Server") (Singleton-Behaviour)
+END_VAR
+VAR CONSTANT
+  InvalidLoggerReference : UDINT := 0;
+END_VAR
+]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="AppendAny" Id="{5eebb930-5def-4c0d-a65c-b6e3125f795c}">
+      <Declaration><![CDATA[/// Appends any given data to the log string. The type of the provided data
+/// has to be one of the [standard data types](https://infosys.beckhoff.com/english.php?content=../content/1033/tc3_plc_intro/2529388939.html&id=).
+/// This method can be chained.
+METHOD AppendAny : REFERENCE TO TcLog
+VAR_INPUT
+  /// data to be appended to log string.
+  data : ANY;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitializeLogData();
+
+_logData := Tc2_Standard.CONCAT(_logData, AnyToString(data));
+
+AppendAny REF= THIS^;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AppendString" Id="{c92e2007-fb29-4b2e-8549-abd2d8fd6a23}">
+      <Declaration><![CDATA[/// Appends another string to the log message.
+/// This method can be chained.
+METHOD AppendString : REFERENCE TO TcLog
+VAR_INPUT
+  /// data to be appended to log string.
+  data : Tc2_System.T_MaxString; 
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitializeLogData();
+
+_logData := Tc2_Standard.CONCAT(_logData, data);
+  
+AppendString REF= THIS^;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="AppendVariable" Id="{fc08e257-fbd7-4582-9acc-c9825252a236}">
+      <Declaration><![CDATA[/// Appends information about the given variable to the log string. 
+/// This method can be chained.
+/// Example: 
+
+/// ```st
+/// VAR
+///   Logger: TcLog;
+///    myInt : INT := 10;
+///   myVarInfo : __SYSTEM.VAR_INFO := __VARINFO(myInt);
+/// END_VAR
+/// Logger.AppendVariable(myVarInfo, myInt);
+/// ```
+///
+METHOD AppendVariable : REFERENCE TO TcLog
+VAR_INPUT
+  /// [VAR_INFO](https://infosys.beckhoff.com/index.php?content=../content/1031/tc3_plc_intro/3527777675.html&id=) of variable to be appended to log string.
+  varInfo : __SYSTEM.VAR_INFO;
+  /// Value of variable to be appended to log string.
+  value : ANY; 
+END_VAR
+VAR
+  format : Tc2_Utilities.FB_FormatString;
+  symbolName : Tc2_System.T_MaxString;
+  typeName : Tc2_System.T_MaxString;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitializeLogData();
+
+symbolName := varInfo.Symbol;
+typeName := varInfo.TypeName; 
+
+format(
+  sFormat := '%s [%s] : ',
+  arg1 := Tc2_Utilities.F_STRING(symbolName),
+  arg2 := Tc2_Utilities.F_STRING(typeName));
+  
+AppendString(format.sOut);
+AppendAny(value);
+
+AppendVariable REF= THIS^;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Debug" Id="{b5f6750c-279c-4dbe-b94c-58052303cf12}">
+      <Declaration><![CDATA[/// Logs the log string in DEBUG level.
+METHOD Debug : BOOL
+VAR_INPUT
+  /// Message to be appended to log string.
+  message : Tc2_System.T_MaxString; 
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitializeLogData();
+IF _logConditionSatisfied THEN
+  IF _usedLogger <> InvalidLoggerReference THEN 
+    _usedLogger.LogStandardFormat(Tc2_Standard.CONCAT(_logData, message), ShortenInstancePath(_instancePath), LogLevel.Debug); 
+  ELSE
+    Tc2_System.ADSLOGSTR(ADSLOG_MSGTYPE_LOG OR LogLevelToAdsLogMsgType(LogLevels.Error), 'usedLogger: No valid reference', ''); 
+  END_IF
+END_IF
+_logDataInitialized := FALSE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Error" Id="{a2419e6a-bcb4-4033-9024-9e519e40c1b6}">
+      <Declaration><![CDATA[/// Logs the log string in ERROR level.
+METHOD Error : BOOL
+VAR_INPUT
+  /// Message to be appended to log string.
+  message : Tc2_System.T_MaxString; 
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitializeLogData();
+IF _logConditionSatisfied THEN
+  IF _usedLogger <> InvalidLoggerReference THEN 
+    _usedLogger.LogStandardFormat(Tc2_Standard.CONCAT(_logData, message), ShortenInstancePath(_instancePath), LogLevel.Error); 
+  ELSE
+    Tc2_System.ADSLOGSTR(ADSLOG_MSGTYPE_LOG OR LogLevelToAdsLogMsgType(LogLevels.Error), 'usedLogger: No valid reference', ''); 
+  END_IF
+END_IF
+_logDataInitialized := FALSE;
+]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Fatal" Id="{09438f47-6ce5-4519-9ae9-0ea0c06be2ed}">
+      <Declaration><![CDATA[/// Logs the log string in FATAL level.
+METHOD Fatal : BOOL
+VAR_INPUT
+  /// Message to be appended to log string.
+  message : Tc2_System.T_MaxString; 
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitializeLogData();
+IF _logConditionSatisfied THEN
+  IF _usedLogger <> InvalidLoggerReference THEN 
+    _usedLogger.LogStandardFormat(Tc2_Standard.CONCAT(_logData, message), ShortenInstancePath(_instancePath), LogLevel.Fatal); 
+  ELSE
+    Tc2_System.ADSLOGSTR(ADSLOG_MSGTYPE_LOG OR LogLevelToAdsLogMsgType(LogLevels.Error), 'usedLogger: No valid reference', ''); 
+  END_IF
+END_IF
+_logDataInitialized := FALSE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Information" Id="{7e1b5355-e733-4f69-804b-0dd119d9e85c}">
+      <Declaration><![CDATA[/// Logs the log string in INFORMATION level.
+METHOD Information : BOOL
+VAR_INPUT
+  /// Message to be appended to log string.
+  message : Tc2_System.T_MaxString; 
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitializeLogData();
+IF _logConditionSatisfied THEN
+  IF _usedLogger <> InvalidLoggerReference THEN 
+    _usedLogger.LogStandardFormat(Tc2_Standard.CONCAT(_logData, message), ShortenInstancePath(_instancePath), LogLevel.Information); 
+  ELSE
+    Tc2_System.ADSLOGSTR(ADSLOG_MSGTYPE_LOG OR LogLevelToAdsLogMsgType(LogLevels.Error), 'usedLogger: No valid reference', ''); 
+  END_IF
+END_IF
+_logDataInitialized := FALSE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Init" Id="{d46295da-e2ae-4ae7-8bc7-00e630372770}">
+      <Declaration><![CDATA[/// Initializes the reference to the core logger. Should only be called once from the core logger directly.
+METHOD PUBLIC Init : BOOL
+VAR_INPUT
+  /// Reference to TcLoggerCore instance.
+  ref2Core : LogCore; 
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF s_loggerSingletonInstance = 0 THEN
+	s_loggerSingletonInstance := ref2Core;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="InitializeLogData" Id="{6e74e05e-8c73-43af-ba8c-ac3f8558a9ae}">
+      <Declaration><![CDATA[// Necessary to provide a fluent interface of the function. 
+// Has to be called at the begin of any method that returns a reference to THIS^
+METHOD PRIVATE InitializeLogData : BOOL
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT _logDataInitialized THEN
+  _logConditionSatisfied := TRUE;
+  _logData := '';
+  _logDataInitialized := TRUE;
+  IF _usedLogger = 0 THEN _usedLogger := s_loggerSingletonInstance; END_IF
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="OnCondition" Id="{fccaf86b-2c0c-4d35-899d-c1a4f2849918}">
+      <Declaration><![CDATA[/// Conditional execution of the log command. Only executes logging when Cond = TRUE.
+METHOD OnCondition : REFERENCE TO TcLog
+VAR_INPUT
+  /// Logs data only if this condition evaluates to TRUE.
+  cond : BOOL; 
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitializeLogData();
+
+_logConditionSatisfied := cond;
+
+OnCondition REF= THIS^;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="SetLogger" Id="{d3f8b6d3-8229-4f28-9235-2fb76d87dd9d}">
+      <Declaration><![CDATA[/// Initializes the reference to the core logger. This enables you to use several
+/// loggers with different configurations in one project.
+METHOD SetLogger : BOOL
+VAR_INPUT
+  /// Reference to Core Logger
+  ref2Core : LogCore; 
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_usedLogger := ref2Core;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="ShortenInstancePath" Id="{b0f7ee3c-2b77-4ded-bdf7-b0f18f5e1f24}">
+      <Declaration><![CDATA[// Helper method. Shortens the instance path by omitting superfluent information
+// such as concrete logger instance and plc/project names.
+{attribute 'hide'}
+METHOD PRIVATE ShortenInstancePath : Tc2_System.T_MaxString
+VAR_INPUT
+  path : Tc2_System.T_MaxString; // Instance path to be shortened.
+END_VAR
+VAR
+  i : UINT;
+  shortenedPath : Tc2_System.T_MaxString;
+  positionInString : INT := 0;
+  positionOfLastDot : INT := 0;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[shortenedPath := path;
+
+// Find last '.'
+WHILE(Tc2_Standard.FIND(shortenedPath, '.') > 0) DO
+  positionInString := Tc2_Standard.FIND(shortenedPath, '.');
+  shortenedPath := Tc2_Standard.DELETE(shortenedPath, positionInString+1, 0); 
+  positionOfLastDot := positionOfLastDot+positionInString;
+END_WHILE
+
+shortenedPath := Path;
+// Delete instantiation of this FB (obvious information)
+shortenedPath := Tc2_Standard.DELETE(shortenedPath, Tc2_Standard.LEN(shortenedPath)-positionOfLastDot+1, positionOfLastDot);
+// Delete project information
+positionInString := Tc2_Standard.FIND(shortenedPath, '.');
+shortenedPath := Tc2_Standard.DELETE(shortenedPath, positionInString+1, 0);
+// Delete PLC information
+positionInString := Tc2_Standard.FIND(shortenedPath, '.');
+shortenedPath := Tc2_Standard.DELETE(shortenedPath, positionInString+1, 0);
+
+ShortenInstancePath := shortenedPath;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="ToAdsLog" Id="{94db621a-547e-463a-8b12-9218ac25525c}">
+      <Declaration><![CDATA[/// Logs directly to ADS log, ignoring the settings of the base logger.
+METHOD ToAdsLog : BOOL
+VAR_INPUT
+  /// Log level in which message should be logged to ADS.
+  logLevel : LogLevels; 
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitializeLogData();
+
+IF _logConditionSatisfied THEN
+  Tc2_System.ADSLOGSTR(ADSLOG_MSGTYPE_LOG OR LogLevelToAdsLogMsgType(logLevel), _logData, ''); 
+END_IF
+
+_logDataInitialized := FALSE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="ToCustomFormat" Id="{ee7ab725-c888-4892-866f-1cce1c5e7df2}">
+      <Declaration><![CDATA[/// Saves custom formatted log string. 
+/// No addtitional information will be added, no formatting will be applied.
+METHOD ToCustomFormat : BOOL
+VAR_INPUT
+  /// Message to be appended to log string.
+  message : Tc2_System.T_MaxString; 
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitializeLogData();
+IF _logConditionSatisfied THEN
+  IF _usedLogger <> InvalidLoggerReference THEN 
+    _usedLogger.LogCustomFormat(Tc2_Standard.CONCAT(_logData, message)); 
+  ELSE
+    Tc2_System.ADSLOGSTR(ADSLOG_MSGTYPE_LOG OR LogLevelToAdsLogMsgType(LogLevels.Error), 'usedLogger: No valid reference', ''); 
+  END_IF
+END_IF
+_logDataInitialized := FALSE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Warning" Id="{2ce36237-9bf6-49dc-b921-ef9d154df99c}">
+      <Declaration><![CDATA[/// Logs the log string in WARNING level.
+METHOD Warning : BOOL
+VAR_INPUT
+  /// Message to be appended to log string.
+  message : Tc2_System.T_MaxString; 
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitializeLogData();
+IF _logConditionSatisfied THEN
+  IF _usedLogger <> InvalidLoggerReference THEN 
+    _usedLogger.LogStandardFormat(Tc2_Standard.CONCAT(_logData, message), ShortenInstancePath(_instancePath), LogLevel.Warning); 
+  ELSE
+    Tc2_System.ADSLOGSTR(ADSLOG_MSGTYPE_LOG OR LogLevelToAdsLogMsgType(LogLevels.Error), 'usedLogger: No valid reference', ''); 
+  END_IF
+END_IF
+_logDataInitialized := FALSE;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>
