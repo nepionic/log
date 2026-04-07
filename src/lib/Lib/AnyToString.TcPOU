@@ -29,8 +29,7 @@ VAR
 	_any_string : POINTER TO STRING;
 	_string : Tc2_System.T_MaxString;
 	_wstring : WSTRING;
-END_VAR
-]]></Declaration>
+END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[IF data.TypeClass = __SYSTEM.Type_Class.Type_Byte THEN
 	_any_byte := data.pValue;

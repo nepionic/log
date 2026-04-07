@@ -7,15 +7,14 @@
 TYPE INTERNAL DeleteFilesState :
 (
 	Idle := 0,
-  SearchNextFile,
-  WaitUntilExecutionDone,
-  ProcessFoundFiles,
-  CheckIfFileIsDirectory,
-  CheckFileTime,
-  DeleteFile,
-  FileDeleted
+	SearchNextFile,
+	WaitUntilExecutionDone,
+	ProcessFoundFiles,
+	CheckIfFileIsDirectory,
+	CheckFileTime,
+	DeleteFile,
+	FileDeleted
 );
-END_TYPE
-]]></Declaration>
+END_TYPE]]></Declaration>
   </DUT>
 </TcPlcObject>
