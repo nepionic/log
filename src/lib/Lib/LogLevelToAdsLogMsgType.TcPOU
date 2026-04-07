@@ -19,7 +19,7 @@ END_VAR]]></Declaration>
 		return_value := Tc2_System.AdsLog_MsgType_Warn;
 		
 	LogLevel.Error, LogLevel.Fatal:
-		return_value := Tc2_System.AdsLog_MsgType_Eerror;
+		return_value := Tc2_System.AdsLog_MsgType_Error;
 ELSE
 	return_value := Tc2_System.AdsLog_MsgType_Hint;
 END_CASE

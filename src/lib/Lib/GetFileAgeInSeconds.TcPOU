@@ -4,29 +4,28 @@
     <Declaration><![CDATA[{attribute 'hide'}
 FUNCTION INTERNAL GetFileAgeInSeconds : DINT
 VAR_INPUT
-  currentUtcTime : Tc2_Utilities.T_FILETIME;
-  findFileEntry : Tc2_Utilities.ST_FindFileEntry;
+	curent_utc_time : Tc2_Utilities.T_FileTime;
+	find_file_entry : Tc2_Utilities.St_FindFileEntry;
 END_VAR
 VAR
-  _timeLastWriteAccess : Tc2_Utilities.T_ULARGE_INTEGER;
-  _fileTimeAsULINT : Tc2_Utilities.T_ULARGE_INTEGER;
-  _fileTimeDifference : Tc2_Utilities.T_ULARGE_INTEGER;
+	time_last_write_access : Tc2_Utilities.T_ULarge_Integer;
+	file_time_as_ulint : Tc2_Utilities.T_ULarge_Integer;
+	file_time_delta : Tc2_Utilities.T_ULarge_Integer;
 END_VAR
 VAR CONSTANT
-  OneSecondInOneHundredNanoSecondsIntervals : LREAL := 1000*1000*10;
-END_VAR
-]]></Declaration>
+	ONE_SECOND_IN_ONE_HUNDRED_NANOSECOND_INTERVALS : LREAL := 1000*1000*10;
+END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[// Local file time
-_fileTimeAsULINT.dwLowPart := currentUtcTime.dwLowDateTime;
-_fileTimeAsULINT.dwHighPart := currentUtcTime.dwHighDateTime;
+file_time_as_ulint.dwLowPart := curent_utc_time.dwLowDateTime;
+file_time_as_ulint.dwHighPart := curent_utc_time.dwHighDateTime;
 
 // Write access is UTC
-_timeLastWriteAccess.dwLowPart := findFileEntry.lastWriteTime.dwLowDateTime;
-_timeLastWriteAccess.dwHighPart := findFileEntry.lastWriteTime.dwHighDateTime;
-_fileTimeDifference := UInt64Sub64(_fileTimeAsULINT, _timeLastWriteAccess);
+time_last_write_access.dwLowPart := find_file_entry.lastWriteTime.dwLowDateTime;
+time_last_write_access.dwHighPart := find_file_entry.lastWriteTime.dwHighDateTime;
+file_time_delta := Tc2_Utilities.UInt64Sub64(file_time_as_ulint, time_last_write_access);
 
-GetFileAgeInSeconds := LREAL_TO_DINT(UINT64_TO_LREAL(_fileTimeDifference)/(OneSecondInOneHundredNanoSecondsIntervals));]]></ST>
+GetFileAgeInSeconds := LREAL_TO_DINT(Tc2_Utilities.UInt64_To_LReal(file_time_delta) / ONE_SECOND_IN_ONE_HUNDRED_NANOSECOND_INTERVALS);]]></ST>
     </Implementation>
   </POU>
 </TcPlcObject>

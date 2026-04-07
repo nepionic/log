@@ -5,14 +5,13 @@
 {attribute: 'hide_all_locals'}
 FUNCTION_BLOCK PUBLIC DateTime
 VAR
-  local_system_time : Tc2_Utilities.FB_LocalSystemTime;
-  get_system_time : Tc2_System.GetSystemTime;
-  time_zone_info : Tc2_Utilities.FB_GetTimeZoneInformation;
-  local_Time : Tc2_Utilities.FB_SystemTimeToTzSpecificLocalTime;
-  local_system_time_valid : Tc2_Standard.R_Trig;
-  utc_time : Tc2_Utilities.FB_TzSpecificLocalTimeToFileTime;
-END_VAR
-]]></Declaration>
+	local_system_time : Tc2_Utilities.Fb_LocalSystemTime;
+	get_system_time : Tc2_System.GetSystemTime;
+	time_zone_info : Tc2_Utilities.Fb_GetTimeZoneInformation;
+	local_Time : Tc2_Utilities.Fb_SystemTimeToTzSpecificLocalTime;
+	local_system_time_valid : Tc2_Standard.R_Trig;
+	utc_time : Tc2_Utilities.Fb_TzSpecificLocalTimeToFileTime;
+END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[// Get local system time
 local_system_time(
@@ -47,7 +46,7 @@ PROPERTY AsLocalFileTime : Tc2_Utilities.T_FILETIME
       <Get Name="Get" Id="{953b2b8a-2a91-4249-b8d2-ee9f7fd5128a}">
         <Declaration><![CDATA[]]></Declaration>
         <Implementation>
-          <ST><![CDATA[AsLocalFileTime := SYSTEMTIME_TO_FILETIME(THIS^.AsLocalSystemTime);]]></ST>
+          <ST><![CDATA[AsLocalFileTime := Tc2_Utilities.SystemTime_To_FileTime(THIS^.AsLocalSystemTime);]]></ST>
         </Implementation>
       </Get>
     </Property>
@@ -91,8 +90,7 @@ PROPERTY AsUtcFileTime : Tc2_Utilities.T_FILETIME
       <Declaration><![CDATA[/// When calling `DateTime` the first time, it takes some time until all time and timezone information is available.
 /// `Done` is `TRUE` for one cycle, once all the data is ready. 
 {attribute 'monitoring':='call'}
-PROPERTY Done : BOOL
-]]></Declaration>
+PROPERTY Done : BOOL]]></Declaration>
       <Get Name="Get" Id="{2af34202-4261-406f-a908-751802beede6}">
         <Declaration><![CDATA[]]></Declaration>
         <Implementation>
@@ -106,45 +104,44 @@ PROPERTY Done : BOOL
 {attribute 'hide'}
 METHOD PRIVATE ReplaceFormatPlaceholder : STRING
 VAR_INPUT
-  format : STRING;
-  length : INT;
-  timeType : STRING(1);
+	format : STRING;
+	length : INT;
+	time_type : STRING(1);
 END_VAR
 VAR_INST
-  i : INT;
-  replaceString : STRING;
-  timeString : STRING;
+	i : INT;
+	replace_string : STRING;
+	time_string : STRING;
 END_VAR
 VAR
-  localSystemTime : Tc2_Utilities.TIMESTRUCT;
-END_VAR
-]]></Declaration>
+	local_system_time : Tc2_Utilities.TimeStruct;
+END_VAR]]></Declaration>
       <Implementation>
-        <ST><![CDATA[localSystemTime := THIS^.AsLocalSystemTime;
+        <ST><![CDATA[local_system_time := THIS^.AsLocalSystemTime;
 
-IF    timeType = 'Y'  THEN timeString := TO_STRING(localSystemTime.wYear); 
-ELSIF timeType = 'M'  THEN timeString := TO_STRING(localSystemTime.wMonth); 
-ELSIF timeType = 'D'  THEN timeString := TO_STRING(localSystemTime.wDay); 
-ELSIF timeType = 'h'  THEN timeString := TO_STRING(localSystemTime.wHour); 
-ELSIF timeType = 'm'  THEN timeString := TO_STRING(localSystemTime.wMinute); 
-ELSIF timeType = 's'  THEN timeString := TO_STRING(localSystemTime.wSecond); 
-ELSIF timeType = 'i'  THEN timeString := TO_STRING(localSystemTime.wMilliseconds); 
+IF    time_type = 'Y'  THEN time_string := TO_STRING(local_system_time.wYear); 
+ELSIF time_type = 'M'  THEN time_string := TO_STRING(local_system_time.wMonth); 
+ELSIF time_type = 'D'  THEN time_string := TO_STRING(local_system_time.wDay); 
+ELSIF time_type = 'h'  THEN time_string := TO_STRING(local_system_time.wHour); 
+ELSIF time_type = 'm'  THEN time_string := TO_STRING(local_system_time.wMinute); 
+ELSIF time_type = 's'  THEN time_string := TO_STRING(local_system_time.wSecond); 
+ELSIF time_type = 'i'  THEN time_string := TO_STRING(local_system_time.wMilliseconds); 
 ELSE
-  timeString:='';
+  time_string:='';
 END_IF
 
-replaceString := '';
+replace_string := '';
 
-IF length > Tc2_Standard.LEN(timeString) THEN
-  FOR i:=1 TO length - Tc2_Standard.LEN(timeString) DO
-    replaceString := Tc2_Standard.CONCAT(replaceString, '0');
-  END_FOR
-  replaceString := Tc2_Standard.CONCAT(replaceString, timeString);
+IF length > Tc2_Standard.Len(time_string) THEN
+	FOR i:=1 TO length - Tc2_Standard.Len(time_string) DO
+		replace_string := Tc2_Standard.ConCat(replace_string, '0');
+	END_FOR
+	replace_string := Tc2_Standard.ConCat(replace_string, time_string);
 ELSE
-  replaceString := Tc2_Standard.RIGHT(timeString, length);
+	replace_string := Tc2_Standard.Right(time_string, length);
 END_IF
 
-ReplaceFormatPlaceholder := Tc2_Standard.REPLACE(format, replaceString, length, Tc2_Standard.FIND(format, timeType));]]></ST>
+ReplaceFormatPlaceholder := Tc2_Standard.Replace(format, replace_string, length, Tc2_Standard.Find(format, time_type));]]></ST>
       </Implementation>
     </Method>
     <Method Name="ToFormatString" Id="{df77e8d4-f348-4962-90ee-212e24fb75fe}">

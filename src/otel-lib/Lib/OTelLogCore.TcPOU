@@ -1,0 +1,128 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="OTelLogCore" Id="{c826f688-4467-4518-94eb-8e60c298043f}" SpecialFunc="None">
+    <Declaration><![CDATA[{attribute 'linkalways'}
+{attribute 'no_explicit_call' := 'This FB is a CLASS and must be accessed using methods or properties'}
+{attribute 'enable_dynamic_creation'}
+/// OTel backend for Nepionic_Log.
+/// Implements LogCore by writing structured log entries directly into an OtelLogRing
+/// that is exposed as an ADS symbol and consumed by the Go otelcol-ads collector.
+///
+/// Usage:
+///   1. Declare an OtelLogRing somewhere accessible via ADS (e.g. in a PROGRAM).
+///   2. Set Ring := ADR(myLogRing) before any log calls.
+///   3. Pass THIS^ to TcLog.SetLogger or TcLogCore as a backend.
+FUNCTION_BLOCK PUBLIC OTelLogCore IMPLEMENTS Nepionic_Log.LogCore
+VAR
+	ring : POINTER TO OTelLogRing;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="LogCustomFormat" Id="{18a38de1-3a3f-4052-bc07-d24e2a2dfb25}">
+      <Declaration><![CDATA[METHOD PUBLIC LogCustomFormat : BOOL
+VAR_INPUT
+    data : Tc2_System.T_MaxString;
+END_VAR
+VAR
+    empty_attrs : ARRAY[0..9] OF Nepionic_Log.OtelLogAttribute;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[LogCustomFormat := LogWithAttributes(data, '', Nepionic_Log.LogLevel.Information, empty_attrs, 0);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="LogStandardFormat" Id="{4fe39462-d8e7-4650-bbc9-03365260e827}">
+      <Declaration><![CDATA[METHOD PUBLIC LogStandardFormat : BOOL
+VAR_INPUT
+	data : Tc2_System.T_MaxString;
+	instance_path : Tc2_System.T_MaxString;
+	log_level : Nepionic_Log.LogLevel;
+END_VAR
+VAR
+	empty_attrs : ARRAY[0..9] OF Nepionic_Log.OtelLogAttribute;
+END_VAR
+]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[LogStandardFormat := LogWithAttributes(data, instance_path, log_level, empty_attrs, 0);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="LogWithAttributes" Id="{266ee026-5b84-4353-9eaa-99bf18b466fa}">
+      <Declaration><![CDATA[METHOD PUBLIC LogWithAttributes : BOOL
+VAR_INPUT
+	data : Tc2_System.T_MaxString;
+	instance_path : Tc2_System.T_MaxString;
+	log_level : Nepionic_Log.LogLevel;
+	attrs : ARRAY[0..9] OF Nepionic_Log.OtelLogAttribute;
+	attr_count : USINT;
+END_VAR
+VAR
+    slot_idx : UDINT;
+    expected_gen : UDINT;
+    ft : Tc2_Utilities.T_FileTime;
+    ft_ulint : ULINT;
+    i : USINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF ring = 0 THEN
+    LogWithAttributes := FALSE;
+    RETURN;
+END_IF
+
+// Check for ring full condition
+IF ring^.head - (ring^.head MOD 128 + (ring^.head / 128) * 128) >= 128 THEN
+    ring^.overflow_cnt := ring^.overflow_cnt + 1;
+END_IF
+
+slot_idx     := ring^.head MOD 128;
+expected_gen := (ring^.head / 128 + 1) * 2;
+
+// Mark slot as being written (ODD sequence = write in progress)
+ring^.entries[slot_idx].sequence := expected_gen - 1;
+
+// Capture timestamp — Windows FILETIME to Unix nanoseconds
+ft := Tc2_Utilities.F_GetSystemTime();
+ft_ulint := SHL(DWORD_TO_ULINT(ft.dwHighDateTime), 32) OR DWORD_TO_ULINT(ft.dwLowDateTime);
+ring^.entries[slot_idx].timestamp := (ft_ulint - 116444736000000000) * 100;
+
+// Severity
+CASE log_level OF
+    Nepionic_Log.LogLevel.Debug:
+		ring^.entries[slot_idx].severity := 0;
+
+    Nepionic_Log.LogLevel.Information:
+		ring^.entries[slot_idx].severity := 1;
+
+    Nepionic_Log.LogLevel.Warning:
+		ring^.entries[slot_idx].severity := 2;
+
+    Nepionic_Log.LogLevel.Error:
+		ring^.entries[slot_idx].severity := 3;
+
+    Nepionic_Log.LogLevel.Fatal:
+		ring^.entries[slot_idx].severity := 4;
+ELSE
+    ring^.entries[slot_idx].severity := 1;
+END_CASE
+
+// Message and source
+ring^.entries[slot_idx].message := data;
+ring^.entries[slot_idx].source := instance_path;
+
+// Attributes
+ring^.entries[slot_idx].attr_count := USINT_TO_UDINT(attr_count);
+FOR i := 0 TO 9 DO
+	ring^.entries[slot_idx].attrs[i] := attrs[i];
+END_FOR
+
+// Mark slot as committed (EVEN sequence = ready to read)
+ring^.entries[slot_idx].sequence := expected_gen;
+
+// Advance write cursor
+ring^.head := ring^.head + 1;
+
+LogWithAttributes := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

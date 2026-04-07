@@ -6,26 +6,25 @@ TYPE LoggingConfiguration :
 STRUCT
 	// File name where the logs should be written to. Should not include path.
 	file_name : Tc2_System.T_MaxString;
-  // File path where the logs should be written to. Will be prefixed to `FileName`
+	// File path where the logs should be written to. Will be prefixed to `FileName`
 	file_path : Tc2_System.T_MaxString;
-  // Whether to include the instance path of TcLog into the log message or not.
-	IncludeInstancePath : BOOL;
-  /// Whether to write the logs to ADS output or not.
-	WriteToAds : BOOL;
-  /// Rolling interval: when to create a new log file.
-	RollingInterval : RollingIntervals;
-  /// What is the minimum log level that gets logged?
-	MinimumLevel : LogLevel;
-  /// Which delimiter should be used between the different parts of the log string?
-	Delimiter : STRING(1);
-  /// When should old log files be deleted? Unit: days. Set it to `0` if log files should never be deleted. 
-	LogFileLifespan : UINT;
-  /// Format of timestamp. See `TcLogCore.TimestampFormat` for formatting options.
-	TimestampFormat : STRING;
-  /// Log only valid timestamps (skip log messages during time initialization (first few cycles)
-  	ValidTimestampsOnly: BOOL;
+	// Whether to include the instance path of TcLog into the log message or not.
+	include_instance_path : BOOL;
+	/// Whether to write the logs to ADS output or not.
+	write_to_ads : BOOL;
+	/// Rolling interval: when to create a new log file.
+	rolling_interval : RollingIntervals;
+	/// What is the minimum log level that gets logged?
+	minimum_level : LogLevel;
+	/// Which delimiter should be used between the different parts of the log string?
+	delimiter : STRING(1);
+	/// When should old log files be deleted? Unit: days. Set it to `0` if log files should never be deleted. 
+	log_file_life_span : UINT;
+	/// Format of timestamp. See `TcLogCore.TimestampFormat` for formatting options.
+	timestamp_format : STRING;
+	/// Log only valid timestamps (skip log messages during time initialization (first few cycles)
+	valid_timestamps_only: BOOL;
 END_STRUCT
-END_TYPE
-]]></Declaration>
+END_TYPE]]></Declaration>
   </DUT>
 </TcPlcObject>

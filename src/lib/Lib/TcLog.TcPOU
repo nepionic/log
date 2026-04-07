@@ -14,19 +14,24 @@
 /// The last method to call after the log message has been built is one of ´[Debug|Information|Warning|Error|Fatal]`. 
 /// This sets the log level of the message and sends it off to the log message queue of `TcLogCore` where it will
 /// be processed according to its configuration.
+{attribute 'linkalways'} 
+{attribute 'no_explicit_call' := 'This FB is a CLASS and must be accessed using methods or properties'}
+{attribute 'enable_dynamic_creation'}
 {attribute 'hide_all_locals'}
 {attribute 'reflection'} 
 FUNCTION_BLOCK TcLog IMPLEMENTS ILog
 VAR
-  _logConditionSatisfied : BOOL; // flag that indicates, whether log condition has been satisfied.
+  log_condition_satisfied : BOOL; // flag that indicates, whether log condition has been satisfied.
                                 // Logging will only be carried out it this evaluates to TRUE.                    
-  _logDataInitialized : BOOL; // flag that indicate, whether log data has been initialized.
+  log_data_initialised : BOOL; // flag that indicate, whether log data has been initialized.
                              // Necessary for configuration methods to provide a fluent interface.                            
-  _logData : Tc2_System.T_MaxString; // contains message to be logged.
-  _usedLogger : LogCore;
+  log_data : Tc2_System.T_MaxString; // contains message to be logged.
+  used_logger : LogCore;
   {attribute 'instance-path'} 
   {attribute 'noinit'} 
-  _instancePath : STRING; // contains instance path
+  instance_path : STRING; // contains instance path
+  attrs        : ARRAY[0..9] OF LogAttribute; // structured attributes for current log call
+  attr_count   : USINT;                           // number of populated entries in _attrs
 END_VAR
 VAR_STAT
   {attribute 'hide'}
@@ -52,7 +57,7 @@ END_VAR
       <Implementation>
         <ST><![CDATA[InitializeLogData();
 
-_logData := Tc2_Standard.CONCAT(_logData, AnyToString(data));
+log_data := Tc2_Standard.CONCAT(log_data, AnyToString(data));
 
 AppendAny REF= THIS^;]]></ST>
       </Implementation>
@@ -69,7 +74,7 @@ END_VAR
       <Implementation>
         <ST><![CDATA[InitializeLogData();
 
-_logData := Tc2_Standard.CONCAT(_logData, data);
+log_data := Tc2_Standard.CONCAT(log_data, data);
   
 AppendString REF= THIS^;]]></ST>
       </Implementation>
@@ -122,81 +127,77 @@ AppendVariable REF= THIS^;]]></ST>
       <Declaration><![CDATA[/// Logs the log string in DEBUG level.
 METHOD Debug : BOOL
 VAR_INPUT
-  /// Message to be appended to log string.
-  message : Tc2_System.T_MaxString; 
-END_VAR
-]]></Declaration>
+	/// Message to be appended to log string.
+	message : Tc2_System.T_MaxString; 
+END_VAR]]></Declaration>
       <Implementation>
         <ST><![CDATA[InitializeLogData();
-IF _logConditionSatisfied THEN
-  IF _usedLogger <> InvalidLoggerReference THEN 
-    _usedLogger.LogStandardFormat(Tc2_Standard.CONCAT(_logData, message), ShortenInstancePath(_instancePath), LogLevel.Debug); 
-  ELSE
-    Tc2_System.ADSLOGSTR(ADSLOG_MSGTYPE_LOG OR LogLevelToAdsLogMsgType(LogLevels.Error), 'usedLogger: No valid reference', ''); 
-  END_IF
+IF log_condition_satisfied THEN
+	IF used_logger <> InvalidLoggerReference THEN 
+		used_logger.LogWithAttributes(Tc2_Standard.ConCat(log_data, message), ShortenInstancePath(instance_path), LogLevel.Debug, attrs, attr_count); 
+	ELSE
+		Tc2_System.AdsLogStr(Tc2_System.AdsLog_MsgType_Log OR LogLevelToAdsLogMsgType(LogLevel.Error), 'usedLogger: No valid reference', ''); 
+	END_IF
 END_IF
-_logDataInitialized := FALSE;]]></ST>
+log_data_initialised := FALSE;]]></ST>
       </Implementation>
     </Method>
     <Method Name="Error" Id="{a2419e6a-bcb4-4033-9024-9e519e40c1b6}">
       <Declaration><![CDATA[/// Logs the log string in ERROR level.
 METHOD Error : BOOL
 VAR_INPUT
-  /// Message to be appended to log string.
-  message : Tc2_System.T_MaxString; 
-END_VAR
-]]></Declaration>
+	/// Message to be appended to log string.
+	message : Tc2_System.T_MaxString; 
+END_VAR]]></Declaration>
       <Implementation>
         <ST><![CDATA[InitializeLogData();
-IF _logConditionSatisfied THEN
-  IF _usedLogger <> InvalidLoggerReference THEN 
-    _usedLogger.LogStandardFormat(Tc2_Standard.CONCAT(_logData, message), ShortenInstancePath(_instancePath), LogLevel.Error); 
-  ELSE
-    Tc2_System.ADSLOGSTR(ADSLOG_MSGTYPE_LOG OR LogLevelToAdsLogMsgType(LogLevels.Error), 'usedLogger: No valid reference', ''); 
-  END_IF
+IF log_condition_satisfied THEN
+	IF used_logger <> InvalidLoggerReference THEN 
+		used_logger.LogWithAttributes(Tc2_Standard.ConCat(log_data, message), ShortenInstancePath(instance_path), LogLevel.Error, attrs, attr_count); 
+	ELSE
+		Tc2_System.AdsLogStr(Tc2_System.AdsLog_MsgType_Log OR LogLevelToAdsLogMsgType(LogLevel.Error), 'usedLogger: No valid reference', ''); 
+	END_IF
 END_IF
-_logDataInitialized := FALSE;
-]]></ST>
+log_data_initialised := FALSE;]]></ST>
       </Implementation>
     </Method>
     <Method Name="Fatal" Id="{09438f47-6ce5-4519-9ae9-0ea0c06be2ed}">
       <Declaration><![CDATA[/// Logs the log string in FATAL level.
 METHOD Fatal : BOOL
 VAR_INPUT
-  /// Message to be appended to log string.
-  message : Tc2_System.T_MaxString; 
-END_VAR
-]]></Declaration>
+	/// Message to be appended to log string.
+	message : Tc2_System.T_MaxString; 
+END_VAR]]></Declaration>
       <Implementation>
         <ST><![CDATA[InitializeLogData();
-IF _logConditionSatisfied THEN
-  IF _usedLogger <> InvalidLoggerReference THEN 
-    _usedLogger.LogStandardFormat(Tc2_Standard.CONCAT(_logData, message), ShortenInstancePath(_instancePath), LogLevel.Fatal); 
-  ELSE
-    Tc2_System.ADSLOGSTR(ADSLOG_MSGTYPE_LOG OR LogLevelToAdsLogMsgType(LogLevels.Error), 'usedLogger: No valid reference', ''); 
-  END_IF
+IF log_condition_satisfied THEN
+	IF used_logger <> InvalidLoggerReference THEN 
+		used_logger.LogWithAttributes(Tc2_Standard.ConCat(log_data, message), ShortenInstancePath(instance_path), LogLevel.Fatal, attrs, attr_count); 
+	ELSE
+		Tc2_System.AdsLogStr(Tc2_System.AdsLog_MsgType_Log OR LogLevelToAdsLogMsgType(LogLevel.Error), 'usedLogger: No valid reference', ''); 
+	END_IF
 END_IF
-_logDataInitialized := FALSE;]]></ST>
+log_data_initialised := FALSE;]]></ST>
       </Implementation>
     </Method>
     <Method Name="Information" Id="{7e1b5355-e733-4f69-804b-0dd119d9e85c}">
       <Declaration><![CDATA[/// Logs the log string in INFORMATION level.
 METHOD Information : BOOL
 VAR_INPUT
-  /// Message to be appended to log string.
-  message : Tc2_System.T_MaxString; 
+	/// Message to be appended to log string.
+	message : Tc2_System.T_MaxString; 
 END_VAR
 ]]></Declaration>
       <Implementation>
         <ST><![CDATA[InitializeLogData();
-IF _logConditionSatisfied THEN
-  IF _usedLogger <> InvalidLoggerReference THEN 
-    _usedLogger.LogStandardFormat(Tc2_Standard.CONCAT(_logData, message), ShortenInstancePath(_instancePath), LogLevel.Information); 
-  ELSE
-    Tc2_System.ADSLOGSTR(ADSLOG_MSGTYPE_LOG OR LogLevelToAdsLogMsgType(LogLevels.Error), 'usedLogger: No valid reference', ''); 
-  END_IF
+IF log_condition_satisfied THEN
+	IF used_logger <> InvalidLoggerReference THEN 
+		used_logger.LogWithAttributes(Tc2_Standard.CONCAT(log_data, message), ShortenInstancePath(instance_path), LogLevel.Information, attrs, attr_count); 
+	ELSE
+		Tc2_System.AdsLogStr(Tc2_System.AdsLog_MsgType_Log OR LogLevelToAdsLogMsgType(LogLevel.Error), 'usedLogger: No valid reference', ''); 
+	END_IF
 END_IF
-_logDataInitialized := FALSE;]]></ST>
+log_data_initialised := FALSE;]]></ST>
       </Implementation>
     </Method>
     <Method Name="Init" Id="{d46295da-e2ae-4ae7-8bc7-00e630372770}">
@@ -219,11 +220,12 @@ END_IF]]></ST>
 METHOD PRIVATE InitializeLogData : BOOL
 ]]></Declaration>
       <Implementation>
-        <ST><![CDATA[IF NOT _logDataInitialized THEN
-  _logConditionSatisfied := TRUE;
-  _logData := '';
-  _logDataInitialized := TRUE;
-  IF _usedLogger = 0 THEN _usedLogger := s_loggerSingletonInstance; END_IF
+        <ST><![CDATA[IF NOT log_data_initialised THEN
+  log_condition_satisfied := TRUE;
+  log_data := '';
+  attr_count := 0;
+  log_data_initialised := TRUE;
+  IF used_logger = 0 THEN used_logger := s_loggerSingletonInstance; END_IF
 END_IF]]></ST>
       </Implementation>
     </Method>
@@ -238,7 +240,7 @@ END_VAR
       <Implementation>
         <ST><![CDATA[InitializeLogData();
 
-_logConditionSatisfied := cond;
+log_condition_satisfied := cond;
 
 OnCondition REF= THIS^;]]></ST>
       </Implementation>
@@ -253,7 +255,7 @@ VAR_INPUT
 END_VAR
 ]]></Declaration>
       <Implementation>
-        <ST><![CDATA[_usedLogger := ref2Core;]]></ST>
+        <ST><![CDATA[used_logger := ref2Core;]]></ST>
       </Implementation>
     </Method>
     <Method Name="ShortenInstancePath" Id="{b0f7ee3c-2b77-4ded-bdf7-b0f18f5e1f24}">
@@ -298,18 +300,17 @@ ShortenInstancePath := shortenedPath;]]></ST>
       <Declaration><![CDATA[/// Logs directly to ADS log, ignoring the settings of the base logger.
 METHOD ToAdsLog : BOOL
 VAR_INPUT
-  /// Log level in which message should be logged to ADS.
-  logLevel : LogLevels; 
-END_VAR
-]]></Declaration>
+	/// Log level in which message should be logged to ADS.
+	log_level : LogLevel; 
+END_VAR]]></Declaration>
       <Implementation>
         <ST><![CDATA[InitializeLogData();
 
-IF _logConditionSatisfied THEN
-  Tc2_System.ADSLOGSTR(ADSLOG_MSGTYPE_LOG OR LogLevelToAdsLogMsgType(logLevel), _logData, ''); 
+IF log_condition_satisfied THEN
+	Tc2_System.AdsLogStr(Tc2_System.AdsLog_MsgType_Log OR LogLevelToAdsLogMsgType(log_level), log_data, ''); 
 END_IF
 
-_logDataInitialized := FALSE;]]></ST>
+log_data_initialised := FALSE;]]></ST>
       </Implementation>
     </Method>
     <Method Name="ToCustomFormat" Id="{ee7ab725-c888-4892-866f-1cce1c5e7df2}">
@@ -317,40 +318,61 @@ _logDataInitialized := FALSE;]]></ST>
 /// No addtitional information will be added, no formatting will be applied.
 METHOD ToCustomFormat : BOOL
 VAR_INPUT
-  /// Message to be appended to log string.
-  message : Tc2_System.T_MaxString; 
-END_VAR
-]]></Declaration>
+	/// Message to be appended to log string.
+	message : Tc2_System.T_MaxString; 
+END_VAR]]></Declaration>
       <Implementation>
         <ST><![CDATA[InitializeLogData();
-IF _logConditionSatisfied THEN
-  IF _usedLogger <> InvalidLoggerReference THEN 
-    _usedLogger.LogCustomFormat(Tc2_Standard.CONCAT(_logData, message)); 
-  ELSE
-    Tc2_System.ADSLOGSTR(ADSLOG_MSGTYPE_LOG OR LogLevelToAdsLogMsgType(LogLevels.Error), 'usedLogger: No valid reference', ''); 
-  END_IF
+IF log_condition_satisfied THEN
+	IF used_logger <> InvalidLoggerReference THEN 
+		used_logger.LogCustomFormat(Tc2_Standard.ConCat(log_data, message)); 
+	ELSE
+		Tc2_System.AdsLogStr(Tc2_System.AdsLog_MsgType_Log OR LogLevelToAdsLogMsgType(LogLevel.Error), 'usedLogger: No valid reference', ''); 
+	END_IF
 END_IF
-_logDataInitialized := FALSE;]]></ST>
+log_data_initialised := FALSE;]]></ST>
       </Implementation>
     </Method>
     <Method Name="Warning" Id="{2ce36237-9bf6-49dc-b921-ef9d154df99c}">
       <Declaration><![CDATA[/// Logs the log string in WARNING level.
 METHOD Warning : BOOL
 VAR_INPUT
-  /// Message to be appended to log string.
-  message : Tc2_System.T_MaxString; 
+	/// Message to be appended to log string.
+	message : Tc2_System.T_MaxString; 
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitializeLogData();
+IF log_condition_satisfied THEN
+	IF used_logger <> InvalidLoggerReference THEN 
+		used_logger.LogWithAttributes(Tc2_Standard.ConCat(log_data, message), ShortenInstancePath(instance_path), LogLevel.Warning, attrs, attr_count); 
+	ELSE
+		Tc2_System.AdsLogStr(Tc2_System.AdsLog_MSgType_Log OR LogLevelToAdsLogMsgType(LogLevel.Error), 'usedLogger: No valid reference', ''); 
+	END_IF
+END_IF
+log_data_initialised := FALSE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="WithAttribute" Id="{db13ddb9-763f-4e88-b828-cb5c338724a9}">
+      <Declaration><![CDATA[/// Adds a structured key/value attribute to the current log entry.
+/// Call before the sink method (Debug/Information/Warning/Error/Fatal).
+/// Up to 10 attributes per log entry; extras are silently ignored.
+/// This method can be chained.
+METHOD WithAttribute : REFERENCE TO TcLog
+VAR_INPUT
+  key   : STRING(31);
+  value : STRING(63);
 END_VAR
 ]]></Declaration>
       <Implementation>
         <ST><![CDATA[InitializeLogData();
-IF _logConditionSatisfied THEN
-  IF _usedLogger <> InvalidLoggerReference THEN 
-    _usedLogger.LogStandardFormat(Tc2_Standard.CONCAT(_logData, message), ShortenInstancePath(_instancePath), LogLevel.Warning); 
-  ELSE
-    Tc2_System.ADSLOGSTR(ADSLOG_MSGTYPE_LOG OR LogLevelToAdsLogMsgType(LogLevels.Error), 'usedLogger: No valid reference', ''); 
-  END_IF
+
+IF attr_count < 10 THEN
+  attrs[attr_count].key   := key;
+  attrs[attr_count].value := value;
+  attr_count := attr_count + 1;
 END_IF
-_logDataInitialized := FALSE;]]></ST>
+
+WithAttribute REF= THIS^;]]></ST>
       </Implementation>
     </Method>
   </POU>

@@ -37,9 +37,31 @@
     <VirtualLibrary>true</VirtualLibrary>
   </PropertyGroup>
   <ItemGroup>
+    <Folder Include="Lib" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="Lib\OTelLogEntry.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Lib\OTelLogRing.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Lib\OTelLogCore.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
     <PlaceholderReference Include="Nepionic_Log">
       <DefaultResolution>[Nepionic_Log], * (Nepionic)</DefaultResolution>
       <Namespace>Nepionic_Log</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc2_System">
+      <DefaultResolution>Tc2_System, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc2_System</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc2_Utilities">
+      <DefaultResolution>Tc2_Utilities, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc2_Utilities</Namespace>
     </PlaceholderReference>
   </ItemGroup>
   <ProjectExtensions>

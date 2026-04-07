@@ -106,6 +106,9 @@
     <Compile Include="Lib\DefaultStringBuilder.TcPOU">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Lib\LogAttribute.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Lib\TcLog.TcPOU">
       <SubType>Code</SubType>
     </Compile>
@@ -131,6 +134,10 @@
       <DefaultResolution>Tc2_Utilities, * (Beckhoff Automation GmbH)</DefaultResolution>
       <Namespace>Tc2_Utilities</Namespace>
       <QualifiedOnly>true</QualifiedOnly>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Tc3_DynamicMemory">
+      <DefaultResolution>Tc3_DynamicMemory, * (Beckhoff Automation GmbH)</DefaultResolution>
+      <Namespace>Tc3_DynamicMemory</Namespace>
     </PlaceholderReference>
   </ItemGroup>
   <ProjectExtensions>

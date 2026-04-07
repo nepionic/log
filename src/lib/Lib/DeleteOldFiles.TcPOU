@@ -8,7 +8,7 @@ VAR_INPUT
 	ExpirationInDays : UINT; // Files will be deleted if older than n days
 	FilePath : Tc2_System.T_MaxString; // Path to files to be deleted
 	FileName : Tc2_System.T_MaxString; // Only files which match this filename will be deleted
-	CurrentUtcTime : Tc2_Utilities.T_FileTime; // Current time  as UTC
+	current_utc_time : Tc2_Utilities.T_FileTime; // Current time  as UTC
 END_VAR
 VAR_OUTPUT
 	Error : Error; // Error information
@@ -40,7 +40,7 @@ _startFileDelete := FALSE;
 CASE _state OF
 	DeleteFilesState.Idle:
 		IF StartScan THEN
-			_commandType:= eEnumCmd_First;
+			_commandType := Tc2_Utilities.E_EnumCmdType.eEnumCmd_First;
 			_deleteFileIndex := 1;
 			_state := DeleteFilesState.SearchNextFile;
 		END_IF
@@ -56,7 +56,7 @@ CASE _state OF
 				IF _enumFindFileList.nFindFiles < MaxNumberOfFiles THEN
 					_state := DeleteFilesState.SearchNextFile;
 				ELSE
-					_commandType := eEnumCmd_Abort;
+					_commandType := Tc2_Utilities.E_EnumCmdType.eEnumCmd_Abort;
 				_state := DeleteFilesState.ProcessFoundFiles;
 				END_IF
 			ELSE
@@ -82,7 +82,7 @@ CASE _state OF
 		END_IF
     
 	DeleteFilesState.CheckFileTime:   
-		IF GetFileAgeInSeconds(CurrentUtcTime, _listOfFiles[_deleteFileIndex]) > (ExpirationInDays * OneDayInSeconds) THEN
+		IF GetFileAgeInSeconds(current_utc_time, _listOfFiles[_deleteFileIndex]) > (ExpirationInDays * OneDayInSeconds) THEN
 			_state := DeleteFilesState.DeleteFile;
 		ELSE
 			_deleteFileIndex := _deleteFileIndex + 1;
@@ -117,7 +117,11 @@ END_CASE
 _enumFindFileList(sNetId := '',
 	eCmd := _commandType,
 	sPathName := Tc2_Standard.CONCAT(FilePath, Tc2_Standard.CONCAT('*', FileName)),
-	bExecute := (_state = DeleteFilesState.SearchNextFile) OR (_commandType = eEnumCmd_Abort AND _state <> DeleteFilesState.Idle),
+	bExecute := (_state = DeleteFilesState.SearchNextFile)
+		OR (
+			_commandType = Tc2_Utilities.E_EnumCmdType.eEnumCmd_Abort
+			AND _state <> DeleteFilesState.Idle
+		),
 	pFindList := ADR(_listOfFiles),
 	cbFindList := SIZEOF(_listOfFiles),
 	tTimeout := T#10S

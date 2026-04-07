@@ -4,8 +4,10 @@
     <Declaration><![CDATA[/// This function block can be used to log on rising or falling edges.
 /// For each signal that should be watched, a separate instance of `TcLogTrig` 
 /// must be created.
-FUNCTION_BLOCK TcLogTrig EXTENDS TcLog
-]]></Declaration>
+{attribute 'linkalways'} 
+{attribute 'no_explicit_call' := 'This FB is a CLASS and must be accessed using methods or properties'}
+{attribute 'enable_dynamic_creation'}
+FUNCTION_BLOCK TcLogTrig EXTENDS TcLog]]></Declaration>
     <Implementation>
       <ST><![CDATA[]]></ST>
     </Implementation>

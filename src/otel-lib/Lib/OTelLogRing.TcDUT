@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="OTelLogRing" Id="{8274d88d-b5d5-46c4-89e5-bc3323a3cfc0}">
+    <Declaration><![CDATA[// Ring buffer header + 128-slot log entry array.
+// Exposed as an ADS symbol (e.g. OtelBridge.LogRing) and read by the Go collector.
+//
+// Binary layout:
+//   offset  0  UDINT  head          Monotonically increasing write counter
+//   offset  4  UDINT  capacity      Number of slots = 128
+//   offset  8  UDINT  overflow_cnt  Incremented when ring is full
+//   offset 12  UDINT  _reserved
+//   offset 16  BYTE[48] _cache_pad  Pad header to 64 bytes
+//   offset 64  OtelLogEntry[128]    128 × 1280 bytes = 163840 bytes
+//   Total: 163904 bytes
+TYPE INTERNAL OTelLogRing :
+STRUCT
+	head : UDINT;
+	capacity : UDINT := 128;
+	overflow_cnt : UDINT;
+	_reserved : UDINT;
+	_cache_pad : ARRAY[0..47] OF BYTE;
+	entries : ARRAY[0..127] OF OTelLogEntry;
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>
