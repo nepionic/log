@@ -1,0 +1,212 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="DefaultLogger" Id="{1a2b3c4d-5e6f-7890-1a2b-3c4d5e6f7890}" SpecialFunc="None">
+    <Declaration><![CDATA[/// Concrete logger that dispatches to the process-global `LogManager` singleton.
+///
+/// Declare one instance per component/axis/subsystem and pass `name` to
+/// `FB_Init` — the name becomes the `source` field on every log record so
+/// you can filter by component in your log viewer.
+///
+/// Simple usage:
+/// ```st
+/// VAR
+///   log : DefaultLogger('AxisX');
+/// END_VAR
+/// log.Info('Homing started');
+/// log.Error('Limit switch triggered');
+/// ```
+///
+/// Structured attributes and conditional logging:
+/// ```st
+/// log.WithAttribute('state', 'Homing').WithAttribute('speed', '100').Info('Axis moving');
+/// log.OnCondition(error_active).Error('Drive fault detected');
+/// ```
+///
+/// No wiring required — `FB_Init` connects automatically to `GetLogManager()`.
+/// Register appenders on `GetLogManager()` once at program startup.
+{attribute 'linkalways'}
+{attribute 'no_explicit_call' := 'This FB is a CLASS and must be accessed using methods or properties'}
+{attribute 'enable_dynamic_creation'}
+FUNCTION_BLOCK PUBLIC DefaultLogger IMPLEMENTS Logger
+VAR
+	_name : STRING(63);
+	attributes : ARRAY[0..9] OF LogAttribute;
+	attribute_count : USINT;
+	condition : BOOL := TRUE;
+	chain_started : BOOL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="Debug" Id="{3c4d5e6f-7a8b-9012-3c4d-5e6f7a8b9012}">
+      <Declaration><![CDATA[/// Log at DEBUG level.
+METHOD PUBLIC Debug : BOOL
+VAR_INPUT
+	message : Tc2_System.T_MaxString;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitChain();
+IF condition THEN
+	GetLogManager().Dispatch(LogLevel.Debug, message, _name, attributes, attribute_count);
+END_IF
+ResetChain();
+Debug := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Error" Id="{6f7a8b9c-0d1e-2345-6f7a-8b9c0d1e2345}">
+      <Declaration><![CDATA[/// Log at ERROR level.
+METHOD PUBLIC Error : BOOL
+VAR_INPUT
+	message : Tc2_System.T_MaxString;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitChain();
+IF condition THEN
+	GetLogManager().Dispatch(LogLevel.Error, message, _name, attributes, attribute_count);
+END_IF
+ResetChain();
+Error := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Fatal" Id="{7a8b9c0d-1e2f-3456-7a8b-9c0d1e2f3456}">
+      <Declaration><![CDATA[/// Log at FATAL level.
+METHOD PUBLIC Fatal : BOOL
+VAR_INPUT
+	message : Tc2_System.T_MaxString;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitChain();
+IF condition THEN
+	GetLogManager().Dispatch(LogLevel.Fatal, message, _name, attributes, attribute_count);
+END_IF
+ResetChain();
+Fatal := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FB_Init" Id="{2b3c4d5e-6f7a-8901-2b3c-4d5e6f7a8901}">
+      <Declaration><![CDATA[METHOD FB_Init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL;
+	bInCopyCode  : BOOL;
+	/// Component name used as the `source` field on every log record.
+	name : STRING(63);
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[_name := name;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Info" Id="{4d5e6f7a-8b9c-0123-4d5e-6f7a8b9c0123}">
+      <Declaration><![CDATA[/// Log at INFORMATION level.
+METHOD PUBLIC Info : BOOL
+VAR_INPUT
+	message : Tc2_System.T_MaxString;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitChain();
+IF condition THEN
+	GetLogManager().Dispatch(LogLevel.Information, message, _name, attributes, attribute_count);
+END_IF
+ResetChain();
+Info := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="InitChain" Id="{0d1e2f3a-4b5c-6789-0d1e-2f3a4b5c6789}">
+      <Declaration><![CDATA[// Initialise chain state on the first call of a log chain.
+// Idempotent — safe to call from every chain method.
+{attribute 'hide'}
+METHOD PRIVATE InitChain]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT chain_started THEN
+	chain_started := TRUE;
+	condition := TRUE;
+	attribute_count := 0;
+END_IF]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Name" Id="{2f3a4b5c-6d7e-8901-2f3a-4b5c6d7e8901}">
+      <Declaration><![CDATA[/// Component name used as the `source` field on every log record.
+{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC Name : STRING(63)]]></Declaration>
+      <Get Name="Get" Id="{3a4b5c6d-7e8f-9012-3a4b-5c6d7e8f9012}">
+        <Declaration><![CDATA[PUBLIC]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Name := _name;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{4b5c6d7e-8f9a-0123-4b5c-6d7e8f9a0123}">
+        <Declaration><![CDATA[PUBLIC]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[_name := Name;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="OnCondition" Id="{9c0d1e2f-3a4b-5678-9c0d-1e2f3a4b5678}">
+      <Declaration><![CDATA[/// Conditionally emit the log record.
+/// When `cond` is FALSE the chain is still initialised but the terminal
+/// method (`Debug`, `Info`, etc.) will be a no-op.
+/// ```st
+/// log.OnCondition(error_active).Error('Drive fault');
+/// ```
+METHOD PUBLIC OnCondition : REFERENCE TO DefaultLogger
+VAR_INPUT
+	cond : BOOL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitChain();
+condition := cond;
+OnCondition REF= THIS^;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="ResetChain" Id="{1e2f3a4b-5c6d-7890-1e2f-3a4b5c6d7890}">
+      <Declaration><![CDATA[// Reset chain state after a terminal method completes.
+// Must be called at the end of every Debug/Info/Warning/Error/Fatal implementation.
+{attribute 'hide'}
+METHOD PRIVATE ResetChain]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[chain_started := FALSE;
+condition := TRUE;
+attribute_count := 0;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Warning" Id="{5e6f7a8b-9c0d-1234-5e6f-7a8b9c0d1234}">
+      <Declaration><![CDATA[/// Log at WARNING level.
+METHOD PUBLIC Warning : BOOL
+VAR_INPUT
+	message : Tc2_System.T_MaxString;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitChain();
+IF condition THEN
+	GetLogManager().Dispatch(LogLevel.Warning, message, _name, attributes, attribute_count);
+END_IF
+ResetChain();
+Warning := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="WithAttribute" Id="{8b9c0d1e-2f3a-4567-8b9c-0d1e2f3a4567}">
+      <Declaration><![CDATA[/// Attach a structured key/value attribute to the current log record.
+/// Call before the terminal method (`Debug`, `Info`, `Warning`, `Error`, `Fatal`).
+/// Up to 10 attributes per record; extras are silently ignored.
+/// This method is chainable:
+/// ```st
+/// log.WithAttribute('key1', 'val1').WithAttribute('key2', 'val2').Info('msg');
+/// ```
+METHOD PUBLIC WithAttribute : REFERENCE TO DefaultLogger
+VAR_INPUT
+	key : STRING(31);
+	value : STRING(63);
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitChain();
+
+IF attribute_count < 10 THEN
+	attributes[attribute_count].key   := key;
+	attributes[attribute_count].value := value;
+	attribute_count := attribute_count + 1;
+END_IF
+
+WithAttribute REF= THIS^;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

@@ -1,0 +1,122 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="LogManager" Id="{e1f2a3b4-c5d6-7890-e1f2-a3b4c5d67890}" SpecialFunc="None">
+    <Declaration><![CDATA[/// Central log dispatcher.
+/// Holds an ordered array of `LogAppender` sinks and fans out every record
+/// to each appender whose `Level` threshold is satisfied.
+///
+/// Obtain the process-global singleton via `GetLogManager()` rather than
+/// instantiating this directly.
+///
+/// Usage (startup — call once per appender before any log calls):
+/// ```st
+/// GetLogManager().Register(ads_appender);
+/// GetLogManager().Register(otel_appender);
+/// ```
+{attribute 'linkalways'}
+{attribute 'no_explicit_call' := 'This FB is a CLASS and must be accessed using methods or properties'}
+{attribute 'enable_dynamic_creation'}
+FUNCTION_BLOCK LogManager
+VAR
+	appenders : ARRAY[0..7] OF LogAppender;
+	_count : UINT;
+	dispatching : BOOL;
+	_level : LogLevel := LogLevel.Debug;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Property Name="Count" Id="{e7f8a9b0-c1d2-3456-e7f8-a9b0c1d23456}">
+      <Declaration><![CDATA[/// Number of registered appenders (read-only, diagnostic).
+{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC Count : UINT]]></Declaration>
+      <Get Name="Get" Id="{f8a9b0c1-d2e3-4567-f8a9-b0c1d2e34567}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Count := _count;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="Dispatch" Id="{a3b4c5d6-e7f8-9012-a3b4-c5d6e7f89012}">
+      <Declaration><![CDATA[/// Fan a log record out to all registered appenders that meet the level threshold.
+/// Guards against reentrancy (logging from inside an appender) and dispatches
+/// nothing until at least one appender is registered.
+METHOD PUBLIC Dispatch : BOOL
+VAR_INPUT
+	level : LogLevel;
+	message : Tc2_System.T_MaxString;
+	source : Tc2_System.T_MaxString;
+	attributes : ARRAY[0..9] OF LogAttribute;
+	attribute_count : USINT;
+END_VAR
+VAR
+	i : UINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[// Drop silently if no appenders registered yet (startup ordering safety)
+IF _count = 0 THEN
+	RETURN;
+END_IF
+
+// Reentrancy guard — an appender must never log back through the manager
+IF dispatching THEN
+	RETURN;
+END_IF
+
+// Global floor filter
+IF level < _level THEN
+	RETURN;
+END_IF
+
+dispatching := TRUE;
+
+FOR i := 0 TO _count - 1 DO
+	IF level >= appenders[i].Level THEN
+		appenders[i].Append(level, message, source, attributes, attribute_count);
+	END_IF
+END_FOR
+
+dispatching := FALSE;
+Dispatch := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Level" Id="{b4c5d6e7-f8a9-0123-b4c5-d6e7f8a90123}">
+      <Declaration><![CDATA[/// Global minimum level floor.
+/// Records below this level are dropped before any per-appender check.
+/// Defaults to `LogLevel.Debug` (pass everything to per-appender filters).
+{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC Level : LogLevel]]></Declaration>
+      <Get Name="Get" Id="{c5d6e7f8-a9b0-1234-c5d6-e7f8a9b01234}">
+        <Declaration><![CDATA[PUBLIC]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Level := _level;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{d6e7f8a9-b0c1-2345-d6e7-f8a9b0c12345}">
+        <Declaration><![CDATA[PUBLIC]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[_level := Level;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="Register" Id="{f2a3b4c5-d6e7-8901-f2a3-b4c5d6e78901}">
+      <Declaration><![CDATA[/// Register an appender with the log manager.
+/// Up to 8 appenders are supported; extras are silently ignored.
+/// Call once at startup before any log calls are made.
+METHOD PUBLIC Register : BOOL
+VAR_INPUT
+	/// Appender instance to add (interface reference).
+	appender : LogAppender;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF _count >= 8 THEN
+	RETURN;
+END_IF
+
+appenders[_count] := appender;
+_count := _count + 1;
+Register := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

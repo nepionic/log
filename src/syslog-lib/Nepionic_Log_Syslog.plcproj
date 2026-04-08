@@ -63,6 +63,9 @@
     <Folder Include="Lib" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Lib\SyslogAppender.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Lib\SyslogClient.TcPOU">
       <SubType>Code</SubType>
     </Compile>

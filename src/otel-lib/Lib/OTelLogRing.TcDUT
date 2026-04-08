@@ -12,7 +12,7 @@
 //   offset 16  BYTE[48] _cache_pad  Pad header to 64 bytes
 //   offset 64  OtelLogEntry[128]    128 × 1280 bytes = 163840 bytes
 //   Total: 163904 bytes
-TYPE INTERNAL OTelLogRing :
+TYPE OTelLogRing :
 STRUCT
 	head : UDINT;
 	capacity : UDINT := 128;

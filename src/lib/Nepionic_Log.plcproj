@@ -38,7 +38,13 @@
   </PropertyGroup>
   <ItemGroup>
     <Folder Include="Lib" />
-    <Folder Include="Api" />
+    <Folder Include="Lib\Appenders\AdsLog" />
+    <Folder Include="Lib\Appenders\File" />
+    <Folder Include="Lib\Manager" />
+    <Folder Include="Lib\Logger" />
+    <Folder Include="Lib\Appenders" />
+    <Folder Include="Lib\Core" />
+    <Folder Include="Lib\String" />
   </ItemGroup>
   <ItemGroup>
     <None Include="Nepionic_Log.tmc">
@@ -46,22 +52,46 @@
     </None>
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Lib\AnyToString.TcPOU">
+    <Compile Include="Lib\Appenders\AdsLog\AdsLogAppender.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Lib\Appenders\AdsLog\LogLevelToAdsLogMsgType.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Lib\Appenders\File\DeleteFilesState.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Lib\Appenders\File\DeleteOldFiles.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Lib\Appenders\File\GenerateTimeData.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Lib\Appenders\File\GetFileAgeInSeconds.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Lib\Appenders\File\LoggingConfiguration.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Lib\Appenders\File\PersistToFileState.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Lib\Appenders\File\RollingIntervals.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Lib\Appenders\LogAppender.TcIO">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Lib\Constants.TcGVL">
       <SubType>Code</SubType>
     </Compile>
+    <Compile Include="Lib\Core\LogAttribute.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Lib\Core\LogLevel.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Lib\DateTime.TcPOU">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Lib\DeleteFilesState.TcDUT">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Lib\DeleteOldFiles.TcPOU">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Lib\DynamicStringBuffer.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Lib\Error.TcDUT">
@@ -70,52 +100,31 @@
     <Compile Include="Lib\ErrorCodes.TcDUT">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Lib\GenerateTimeData.TcPOU">
+    <Compile Include="Lib\Manager\GetLogManager.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Lib\GetFileAgeInSeconds.TcPOU">
+    <Compile Include="Lib\Manager\LogManager.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Lib\LimitedStringBuilder.TcIO">
+    <Compile Include="Lib\Logger\DefaultLogger.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Lib\ILog.TcIO">
+    <Compile Include="Lib\Logger\Logger.TcIO">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Lib\LogCore.TcIO">
+    <Compile Include="Lib\String\AnyToString.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Lib\StringBuilder.TcIO">
+    <Compile Include="Lib\String\DefaultStringBuilder.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Lib\LoggingConfiguration.TcDUT">
+    <Compile Include="Lib\String\DynamicStringBuffer.TcPOU">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Lib\LogLevel.TcDUT">
+    <Compile Include="Lib\String\LimitedStringBuilder.TcIO">
       <SubType>Code</SubType>
     </Compile>
-    <Compile Include="Lib\LogLevelToAdsLogMsgType.TcPOU">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Lib\PersistToFileState.TcDUT">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Lib\RollingIntervals.TcDUT">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Lib\DefaultStringBuilder.TcPOU">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Lib\LogAttribute.TcDUT">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Lib\TcLog.TcPOU">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Lib\TcLogCore.TcPOU">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Lib\TcLogTrig.TcPOU">
+    <Compile Include="Lib\String\StringBuilder.TcIO">
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
@@ -143,8 +152,8 @@
   <ProjectExtensions>
     <PlcProjectOptions>
       <XmlArchive>
-  <Data>
-    <o xml:space="preserve" t="OptionKey">
+        <Data>
+          <o xml:space="preserve" t="OptionKey">
       <v n="Name">"&lt;ProjectRoot&gt;"</v>
       <d n="SubKeys" t="Hashtable" ckt="String" cvt="OptionKey">
         <v>{192FAD59-8248-4824-A8DE-9177C94C195A}</v>
@@ -220,14 +229,14 @@
       </d>
       <d n="Values" t="Hashtable" />
     </o>
-  </Data>
-  <TypeList>
-    <Type n="Boolean">System.Boolean</Type>
-    <Type n="Hashtable">System.Collections.Hashtable</Type>
-    <Type n="OptionKey">{54dd0eac-a6d8-46f2-8c27-2f43c7e49861}</Type>
-    <Type n="String">System.String</Type>
-  </TypeList>
-</XmlArchive>
+        </Data>
+        <TypeList>
+          <Type n="Boolean">System.Boolean</Type>
+          <Type n="Hashtable">System.Collections.Hashtable</Type>
+          <Type n="OptionKey">{54dd0eac-a6d8-46f2-8c27-2f43c7e49861}</Type>
+          <Type n="String">System.String</Type>
+        </TypeList>
+      </XmlArchive>
     </PlcProjectOptions>
   </ProjectExtensions>
 </Project>

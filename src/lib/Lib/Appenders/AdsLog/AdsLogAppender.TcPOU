@@ -1,0 +1,82 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="AdsLogAppender" Id="{5c6d7e8f-9a0b-1234-5c6d-7e8f9a0b1234}" SpecialFunc="None">
+    <Declaration><![CDATA[/// Log appender that writes to the TwinCAT ADS output window via `AdsLogStr`.
+///
+/// Register once at startup:
+/// ```st
+/// GetLogManager().Register(ads_appender);
+/// ```
+///
+/// Optional: raise the threshold above DEBUG to reduce output noise:
+/// ```st
+/// ads_appender.Level := LogLevel.Warning;
+/// ```
+{attribute 'linkalways'}
+{attribute 'no_explicit_call' := 'This FB is a CLASS and must be accessed using methods or properties'}
+{attribute 'enable_dynamic_creation'}
+FUNCTION_BLOCK PUBLIC AdsLogAppender IMPLEMENTS LogAppender
+VAR
+	_level : LogLevel := LogLevel.Debug;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="Append" Id="{6d7e8f9a-0b1c-2345-6d7e-8f9a0b1c2345}">
+      <Declaration><![CDATA[METHOD Append : BOOL
+VAR_INPUT
+	level : LogLevel;
+	message : Tc2_System.T_MaxString;
+	source : Tc2_System.T_MaxString;
+	attributes : ARRAY[0..9] OF LogAttribute;
+	attribute_count : USINT;
+END_VAR
+VAR
+	msg_type : DWORD;
+	text : Tc2_System.T_MaxString;
+	i : USINT;
+	pair : Tc2_System.T_MaxString;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[msg_type := Tc2_System.AdsLog_MsgType_Log OR LogLevelToAdsLogMsgType(level);
+
+// Build: "[source] message  {key=value, ...}"
+IF Tc2_Standard.Len(source) > 0 THEN
+	text := Tc2_Standard.Concat('[', Tc2_Standard.Concat(source, '] '));
+END_IF
+text := Tc2_Standard.Concat(text, message);
+
+IF attribute_count > 0 THEN
+	text := Tc2_Standard.Concat(text, '  {');
+	FOR i := 0 TO attribute_count - 1 DO
+		IF i > 0 THEN
+			text := Tc2_Standard.Concat(text, ', ');
+		END_IF
+		pair := Tc2_Standard.Concat(attributes[i].key, Tc2_Standard.Concat('=', attributes[i].value));
+		text := Tc2_Standard.Concat(text, pair);
+	END_FOR
+	text := Tc2_Standard.Concat(text, '}');
+END_IF
+
+Tc2_System.AdsLogStr(msg_type, text, '');
+Append := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Level" Id="{7e8f9a0b-1c2d-3456-7e8f-9a0b1c2d3456}">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY Level : LogLevel]]></Declaration>
+      <Get Name="Get" Id="{8f9a0b1c-2d3e-4567-8f9a-0b1c2d3e4567}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Level := _level;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{9a0b1c2d-3e4f-5678-9a0b-1c2d3e4f5678}">
+        <Declaration><![CDATA[]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[_level := Level;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+  </POU>
+</TcPlcObject>

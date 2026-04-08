@@ -3,18 +3,42 @@
   <POU Name="TestRunner" Id="{67416dad-cafd-42c9-a195-e92f9a1c42b6}" SpecialFunc="None">
     <Declaration><![CDATA[PROGRAM TestRunner
 VAR
-	syslogger : SyslogClient(hostname := '127.0.0.1', port := 514);
+	ads_log_appender : AdsLogAppender;
+	syslog_appender : SyslogAppender(hostname := '127.0.0.1', port := 514);
+	otel_log_appender : OTelLogAppender;
+	logger : DefaultLogger('TestRunner');
 	
-	message : STRING(255) := 'Get a hot dog up ya!';
-	send : BOOL;
+	get_local_ams_netid : Tc2_Utilities.Fb_GetLocalAmsNetId;
+	
+	initialised : BOOL;
+	
+	message : STRING(255) := 'We modded with 100 nicely!';
+	
+	some_incrementing_value : UDINT;
 END_VAR]]></Declaration>
     <Implementation>
-      <ST><![CDATA[IF send THEN
-	send := FALSE;
-	syslogger.SendLog(2, message);
+      <ST><![CDATA[IF NOT initialised THEN
+	get_local_ams_netid(bExecute := TRUE);
+	
+	IF NOT get_local_ams_netid.bBusy THEN
+		get_local_ams_netid(bExecute := FALSE);
+		GetLogManager().Register(ads_log_appender);
+		GetLogManager().Register(syslog_appender);
+		GetLogManager().Register(otel_log_appender);
+		initialised := TRUE;
+	END_IF
 END_IF
 
-syslogger.Execute();]]></ST>
+IF some_incrementing_value MOD 100 = 0 THEN
+	logger
+		.WithAttribute('ams-netid', get_local_ams_netid.AddrString)
+		.WithAttribute('some_incrementing_value', UDINT_TO_STRING(some_incrementing_value))
+		.Info(message);
+END_IF
+
+some_incrementing_value := some_incrementing_value + 1;
+
+syslog_appender.Execute();]]></ST>
     </Implementation>
   </POU>
 </TcPlcObject>

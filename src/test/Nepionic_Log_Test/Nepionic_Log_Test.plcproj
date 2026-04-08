@@ -36,6 +36,14 @@
       <DefaultResolution>[Nepionic_Log], * (Nepionic)</DefaultResolution>
       <Namespace>Nepionic_Log</Namespace>
     </PlaceholderReference>
+    <PlaceholderReference Include="Nepionic_Log_OTel">
+      <DefaultResolution>[Nepionic_Log_OTel], * (Nepionic)</DefaultResolution>
+      <Namespace>Nepionic_Log_OTel</Namespace>
+    </PlaceholderReference>
+    <PlaceholderReference Include="Nepionic_Log_Syslog">
+      <DefaultResolution>[Nepionic_Log_Syslog], * (Nepionic)</DefaultResolution>
+      <Namespace>Nepionic_Log_Syslog</Namespace>
+    </PlaceholderReference>
     <PlaceholderReference Include="Tc2_Standard">
       <DefaultResolution>Tc2_Standard, * (Beckhoff Automation GmbH)</DefaultResolution>
       <Namespace>Tc2_Standard</Namespace>

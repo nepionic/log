@@ -1,0 +1,46 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <Itf Name="Logger" Id="{142e5ac4-9651-4b60-842f-9fed1e0c8704}">
+    <Declaration><![CDATA[/// User-facing logging interface.
+/// Implemented by `DefaultLogger` and any test doubles.
+///
+/// For structured attributes use the concrete `DefaultLogger` type directly,
+/// which adds `WithAttribute` and `OnCondition` chaining methods.
+INTERFACE PUBLIC Logger EXTENDS __System.IQueryInterface]]></Declaration>
+    <Method Name="Debug" Id="{f6a7b8c9-d0e1-2345-f012-456789012345}">
+      <Declaration><![CDATA[/// Log at DEBUG level.
+METHOD PUBLIC Debug : BOOL
+VAR_INPUT
+	message : Tc2_System.T_MaxString;
+END_VAR]]></Declaration>
+    </Method>
+    <Method Name="Error" Id="{c9d0e1f2-a3b4-5678-2345-789012345678}">
+      <Declaration><![CDATA[/// Log at ERROR level.
+METHOD PUBLIC Error : BOOL
+VAR_INPUT
+	message : Tc2_System.T_MaxString;
+END_VAR]]></Declaration>
+    </Method>
+    <Method Name="Fatal" Id="{d0e1f2a3-b4c5-6789-3456-890123456789}">
+      <Declaration><![CDATA[/// Log at FATAL level.
+METHOD PUBLIC Fatal : BOOL
+VAR_INPUT
+	message : Tc2_System.T_MaxString;
+END_VAR]]></Declaration>
+    </Method>
+    <Method Name="Info" Id="{a7b8c9d0-e1f2-3456-0123-567890123456}">
+      <Declaration><![CDATA[/// Log at INFORMATION level.
+METHOD PUBLIC Info : BOOL
+VAR_INPUT
+	message : Tc2_System.T_MaxString;
+END_VAR]]></Declaration>
+    </Method>
+    <Method Name="Warning" Id="{b8c9d0e1-f2a3-4567-1234-678901234567}">
+      <Declaration><![CDATA[/// Log at WARNING level.
+METHOD PUBLIC Warning : BOOL
+VAR_INPUT
+	message : Tc2_System.T_MaxString;
+END_VAR]]></Declaration>
+    </Method>
+  </Itf>
+</TcPlcObject>

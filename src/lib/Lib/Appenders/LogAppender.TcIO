@@ -1,0 +1,44 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <Itf Name="LogAppender" Id="{a1b2c3d4-e5f6-7890-abcd-ef1234567890}">
+    <Declaration><![CDATA[/// Sink interface implemented by every log appender.
+/// `LogManager` fans log records out to each registered appender whose `Level`
+/// threshold is satisfied.
+///
+/// Implementations must be silent — logging infrastructure must never fault
+/// application code, so `Append` should never raise an exception or leave
+/// an error that the caller must handle.
+INTERFACE PUBLIC LogAppender EXTENDS __System.IQueryInterface]]></Declaration>
+    <Method Name="Append" Id="{b2c3d4e5-f6a7-8901-bcde-f12345678901}">
+      <Declaration><![CDATA[/// Deliver one log record to this appender.
+/// Called by `LogManager.Dispatch` for every record whose level meets the
+/// appender's `Level` threshold.
+METHOD PUBLIC Append : BOOL
+VAR_INPUT
+	/// Severity of the log record.
+	level : LogLevel;
+	/// Free-text log message.
+	message : Tc2_System.T_MaxString;
+	/// Structured source identifier (instance path or logger name).
+	source : Tc2_System.T_MaxString;
+	/// Structured key/value attributes attached to this record.
+	attributes : ARRAY[0..9] OF LogAttribute;
+	/// Number of populated entries in `attrs` (0 – 10).
+	attribute_count : USINT;
+END_VAR]]></Declaration>
+    </Method>
+    <Property Name="Level" Id="{c3d4e5f6-a7b8-9012-cdef-123456789012}">
+      <Declaration><![CDATA[/// Minimum severity this appender accepts.
+/// Records whose level is strictly below this threshold are silently dropped
+/// by `LogManager` before `Append` is ever called.
+{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC Level : LogLevel]]></Declaration>
+      <Get Name="Get" Id="{d4e5f6a7-b8c9-0123-def0-234567890123}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+      <Set Name="Set" Id="{e5f6a7b8-c9d0-1234-ef01-345678901234}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Set>
+    </Property>
+  </Itf>
+</TcPlcObject>

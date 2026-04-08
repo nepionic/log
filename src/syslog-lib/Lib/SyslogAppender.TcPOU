@@ -1,0 +1,133 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="SyslogAppender" Id="{238ef0a1-b2c3-4567-238e-f0a1b2c34567}" SpecialFunc="None">
+    <Declaration><![CDATA[{attribute 'linkalways'}
+{attribute 'no_explicit_call' := 'This FB is a CLASS and must be accessed using methods or properties'}
+{attribute 'enable_dynamic_creation'}
+/// Syslog (RFC 5424, UDP) log appender for Nepionic_Log.
+/// Implements `LogAppender` by forwarding records to a `SyslogClient` that
+/// transmits them over UDP.
+///
+/// **Important:** `Execute` must be called once each PLC cycle to drive the
+/// underlying UDP state machine:
+/// ```st
+/// // In your cyclic PROGRAM:
+/// syslog_appender.Execute();
+/// ```
+///
+/// Usage (startup):
+/// ```st
+/// GetLogManager().Register(syslog_appender);
+/// ```
+///
+/// Structured attributes are appended to the syslog message body as
+/// `key=value` pairs separated by spaces. They are not encoded as RFC 5424
+/// structured data.
+FUNCTION_BLOCK PUBLIC SyslogAppender IMPLEMENTS Nepionic_Log.LogAppender
+VAR
+	client : SyslogClient(hostname := '127.0.0.1', port := 514);
+	_level : Nepionic_Log.LogLevel := Nepionic_Log.LogLevel.Debug;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="Append" Id="{56b123d4-e5f6-7890-56b1-23d4e5f67890}">
+      <Declaration><![CDATA[METHOD PUBLIC Append : BOOL
+VAR_INPUT
+	level : Nepionic_Log.LogLevel;
+	message : Tc2_System.T_MaxString;
+	source : Tc2_System.T_MaxString;
+	attributes : ARRAY[0..9] OF Nepionic_Log.LogAttribute;
+	attribute_count : USINT;
+END_VAR
+VAR
+	syslog_severity : INT;
+	text : STRING(255);
+	i : USINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[CASE level OF
+	Nepionic_Log.LogLevel.Debug:       syslog_severity := 7;
+	Nepionic_Log.LogLevel.Information: syslog_severity := 6;
+	Nepionic_Log.LogLevel.Warning:     syslog_severity := 4;
+	Nepionic_Log.LogLevel.Error:       syslog_severity := 3;
+	Nepionic_Log.LogLevel.Fatal:       syslog_severity := 2;
+ELSE
+	syslog_severity := 6;
+END_CASE
+
+// Build message: "[source] message  key=value key=value"
+IF Tc2_Standard.Len(source) > 0 THEN
+	text := Tc2_Standard.Concat('[', Tc2_Standard.Concat(source, '] '));
+END_IF
+text := Tc2_Standard.Concat(text, message);
+
+IF attribute_count > 0 THEN
+	FOR i := 0 TO attribute_count - 1 DO
+		text := Tc2_Standard.Concat(text, ' ');
+		text := Tc2_Standard.Concat(text, Tc2_Standard.Concat(attributes[i].key, Tc2_Standard.Concat('=', attributes[i].value)));
+	END_FOR
+END_IF
+
+client.SendLog(syslog_severity, text);
+Append := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="AppName" Id="{90f567b8-c9d0-1234-90f5-67b8c9d01234}">
+      <Declaration><![CDATA[/// Application name embedded in the syslog header (default `TwinCAT_PLC`).
+{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC AppName : STRING(32)]]></Declaration>
+      <Get Name="Get" Id="{a1067890-d0e1-2345-a106-7890d0e12345}">
+        <Declaration><![CDATA[PUBLIC]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[AppName := client.AppName;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{b2178901-e1f2-3456-b217-8901e1f23456}">
+        <Declaration><![CDATA[PUBLIC]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[client.AppName := AppName;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="Execute" Id="{45a012c3-d4e5-6789-45a0-12c3d4e56789}">
+      <Declaration><![CDATA[/// Drive the underlying UDP state machine.
+/// Must be called once each PLC cycle.
+METHOD PUBLIC Execute]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[client.Execute();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="FB_Init" Id="{349f01b2-c3d4-5678-349f-01b2c3d45678}">
+      <Declaration><![CDATA[METHOD FB_Init : BOOL
+VAR_INPUT
+	bInitRetains : BOOL;
+	bInCopyCode : BOOL;
+	/// IP address or hostname of the syslog server.
+	hostname : STRING(15) := '127.0.0.1';
+	/// UDP port of the syslog server (default 514).
+	port : UINT := 514;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[client.Hostname := hostname;
+client.Port := port;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Level" Id="{67c234e5-f6a7-8901-67c2-34e5f6a78901}">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC Level : Nepionic_Log.LogLevel]]></Declaration>
+      <Get Name="Get" Id="{78d345f6-a7b8-9012-78d3-45f6a7b89012}">
+        <Declaration><![CDATA[PUBLIC]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Level := _level;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{89e456a7-b8c9-0123-89e4-56a7b8c90123}">
+        <Declaration><![CDATA[PUBLIC]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[_level := Level;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+  </POU>
+</TcPlcObject>

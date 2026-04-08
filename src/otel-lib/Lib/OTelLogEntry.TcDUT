@@ -16,14 +16,14 @@
 //   offset 1232  BYTE[44]  _pad
 //   offset 1276  UDINT   sequence          ODD=being written, EVEN=committed (LAST field)
 //   Total: 1280 bytes
-TYPE INTERNAL OTelLogEntry :
+TYPE OTelLogEntry :
 STRUCT
 	timestamp : ULINT;
 	severity : UDINT;
-	attr_count : UDINT;
+	attribute_count : UDINT;
 	message : STRING(191);
 	source : STRING(63);
-	attrs : ARRAY[0..9] OF Nepionic_Log.OtelLogAttribute;
+	attributes : ARRAY[0..9] OF Nepionic_Log.LogAttribute;
 	_pad : ARRAY[0..43] OF BYTE;
 	sequence : UDINT;
 END_STRUCT

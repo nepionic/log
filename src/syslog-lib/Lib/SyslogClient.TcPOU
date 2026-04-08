@@ -16,11 +16,11 @@ VAR
 	socket_create : Tc2_TcpIp.Fb_SocketUdpCreate;
 	udp_send : Tc2_TcpIp.Fb_SocketUdpSendTo;
     
-    log_payload : STRING(512);
-    timestamp : STRING(32);
-    get_time : Tc2_Utilities.NT_GetTime;
+	log_payload : STRING(512);
+	timestamp : STRING(32);
+	get_time : Tc2_Utilities.NT_GetTime;
     
-    state : INT := 0;
+	state : INT := 0;
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[]]></ST>
@@ -96,10 +96,10 @@ END_CASE]]></ST>
 //code. You can evaluate the return value.
 METHOD FB_Init: BOOL
 VAR_INPUT
-    bInitRetains: BOOL; // TRUE: the retain variables are initialized (reset warm / reset cold)
-    bInCopyCode: BOOL;  // TRUE: the instance will be copied to the copy code afterward (online change)
-	hostname : STRING(15);
-	port : UINT;   
+	bInitRetains: BOOL; // TRUE: the retain variables are initialized (reset warm / reset cold)
+	bInCopyCode: BOOL;  // TRUE: the instance will be copied to the copy code afterward (online change)
+	hostname : STRING(15) := '127.0.0.1';
+	port : UINT := 514;
 END_VAR]]></Declaration>
       <Implementation>
         <ST><![CDATA[THIS^._hostname := hostname;
@@ -122,60 +122,6 @@ ResetConnection();]]></ST>
         </Implementation>
       </Set>
     </Property>
-    <Method Name="LogCustomFormat" Id="{f0d8d91e-6caf-4eae-a169-50c736d993ec}">
-      <Declaration><![CDATA[METHOD PUBLIC LogCustomFormat : BOOL
-VAR_INPUT
-    data : Tc2_System.T_MaxString;
-END_VAR]]></Declaration>
-      <Implementation>
-        <ST><![CDATA[SendLog(6, data);
-LogCustomFormat := TRUE;
-]]></ST>
-      </Implementation>
-    </Method>
-    <Method Name="LogStandardFormat" Id="{9140b159-05a9-4388-b4b0-63120e6cfb32}">
-      <Declaration><![CDATA[METHOD PUBLIC LogStandardFormat : BOOL
-VAR_INPUT
-    data : Tc2_System.T_MaxString;
-    instance_path : Tc2_System.T_MaxString;
-    log_level: Nepionic_Log.LogLevel;
-END_VAR
-VAR
-    empty_attrs : ARRAY[0..9] OF Nepionic_Log.LogAttribute;
-END_VAR]]></Declaration>
-      <Implementation>
-        <ST><![CDATA[LogStandardFormat := LogWithAttributes(data, instance_path, log_level, empty_attrs, 0);]]></ST>
-      </Implementation>
-    </Method>
-    <Method Name="LogWithAttributes" Id="{d7a2971c-4c99-41e1-85ea-60a86360624e}">
-      <Declaration><![CDATA[/// LogCore stub. Structured attributes are not represented in RFC 5424 structured data
-/// by this backend — attrs/attr_count are silently ignored and the message is sent as-is.
-METHOD PUBLIC LogWithAttributes : BOOL
-VAR_INPUT
-    data : Tc2_System.T_MaxString;
-    instance_path : Tc2_System.T_MaxString;
-    log_level : Nepionic_Log.LogLevel;
-    attrs : ARRAY[0..9] OF Nepionic_Log.LogAttribute;
-    attr_count : USINT;
-END_VAR
-VAR
-    syslog_severity : INT;
-END_VAR]]></Declaration>
-      <Implementation>
-        <ST><![CDATA[CASE log_level OF
-    Nepionic_Log.LogLevel.Debug:       syslog_severity := 7;
-    Nepionic_Log.LogLevel.Information: syslog_severity := 6;
-    Nepionic_Log.LogLevel.Warning:     syslog_severity := 4;
-    Nepionic_Log.LogLevel.Error:       syslog_severity := 3;
-    Nepionic_Log.LogLevel.Fatal:       syslog_severity := 2;
-ELSE
-    syslog_severity := 6;
-END_CASE
-
-SendLog(syslog_severity, data);
-LogWithAttributes := TRUE;]]></ST>
-      </Implementation>
-    </Method>
     <Property Name="Port" Id="{53f57cd8-5a6f-43d4-8e65-106edc432c72}">
       <Declaration><![CDATA[PROPERTY PUBLIC Port : UINT]]></Declaration>
       <Get Name="Get" Id="{8e619826-137d-4410-984e-d6317a0c67c7}">

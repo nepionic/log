@@ -40,13 +40,13 @@
     <Folder Include="Lib" />
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="Lib\OTelLogAppender.TcPOU">
+      <SubType>Code</SubType>
+    </Compile>
     <Compile Include="Lib\OTelLogEntry.TcDUT">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Lib\OTelLogRing.TcDUT">
-      <SubType>Code</SubType>
-    </Compile>
-    <Compile Include="Lib\OTelLogCore.TcPOU">
       <SubType>Code</SubType>
     </Compile>
   </ItemGroup>
@@ -63,6 +63,11 @@
       <DefaultResolution>Tc2_Utilities, * (Beckhoff Automation GmbH)</DefaultResolution>
       <Namespace>Tc2_Utilities</Namespace>
     </PlaceholderReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Nepionic_Log_OTel.tmc">
+      <SubType>Content</SubType>
+    </None>
   </ItemGroup>
   <ProjectExtensions>
     <PlcProjectOptions>

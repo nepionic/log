@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="GetLogManager" Id="{09a0b1c2-d3e4-5678-09a0-b1c2d3e45678}" SpecialFunc="None">
+    <Declaration><![CDATA[/// Returns a reference to the process-global `LogManager` singleton.
+///
+/// The singleton is a `VAR_STAT` inside this FUNCTION — no GVL required.
+///
+/// Usage:
+/// ```st
+/// // Register an appender at startup:
+/// GetLogManager().Register(my_otel_appender);
+///
+/// // Raise the global floor to Information:
+/// GetLogManager().Level := LogLevel.Information;
+/// ```
+FUNCTION PUBLIC GetLogManager : REFERENCE TO LogManager
+VAR_STAT
+	_instance : LogManager;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[GetLogManager REF= _instance;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>
