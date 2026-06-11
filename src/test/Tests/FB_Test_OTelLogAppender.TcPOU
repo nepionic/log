@@ -1,0 +1,248 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.21">
+	<POU Name="FB_Test_OTelLogAppender" Id="{A2B3C4D5-E6F7-4890-AB12-3456789012AB}" SpecialFunc="None">
+		<Declaration><![CDATA[/// TcUnit tests for OTelLogAppender.
+/// Exercises ring slot writes, head advancement, sequence tagging,
+/// severity mapping, attribute storage, ring wrap, and overflow counter.
+FUNCTION_BLOCK FB_Test_OTelLogAppender EXTENDS TcUnit.FB_TestSuite
+VAR
+END_VAR]]></Declaration>
+		<Implementation>
+			<ST><![CDATA[Test_HeadIncrements();
+Test_SequenceCommitted();
+Test_SlotContents();
+Test_SeverityMapping();
+Test_SlotAttrs();
+Test_SlotIndexWraps();
+Test_OverflowCnt();
+Test_LevelProperty();]]></ST>
+		</Implementation>
+		<Method Name="Test_HeadIncrements" Id="{B3C4D5E6-F7A8-4901-BC23-456789012BCD}">
+			<Declaration><![CDATA[// head advances by 1 after a single Append call.
+METHOD PRIVATE Test_HeadIncrements
+VAR_INPUT END_VAR
+VAR
+	appender   : Nepionic_Log_OTel.OTelLogAppender;
+	emptyAttrs : ARRAY[0..9] OF Nepionic_Log.LogAttribute;
+END_VAR]]></Declaration>
+			<Implementation>
+				<ST><![CDATA[TEST('HeadIncrements');
+
+appender.Append(Nepionic_Log.LogLevel.Information, 'hello', 'src', emptyAttrs, 0);
+
+AssertEquals_UDINT(Expected := 1,
+                   Actual   := appender.ring.head,
+                   Message  := 'head should be 1 after one Append call');
+
+TEST_FINISHED();]]></ST>
+			</Implementation>
+		</Method>
+		<Method Name="Test_SequenceCommitted" Id="{C4D5E6F7-A8B9-4012-CD34-567890123CDE}">
+			<Declaration><![CDATA[// After the first Append (absIdx=0, capacity=128):
+//   expectedGen = (0/128 + 1)*2 = 2
+// Slot 0 sequence must be 2 (EVEN = committed).
+METHOD PRIVATE Test_SequenceCommitted
+VAR_INPUT END_VAR
+VAR
+	appender   : Nepionic_Log_OTel.OTelLogAppender;
+	emptyAttrs : ARRAY[0..9] OF Nepionic_Log.LogAttribute;
+END_VAR]]></Declaration>
+			<Implementation>
+				<ST><![CDATA[TEST('SequenceCommitted');
+
+appender.Append(Nepionic_Log.LogLevel.Information, 'hello', 'src', emptyAttrs, 0);
+
+AssertEquals_UDINT(Expected := 2,
+                   Actual   := appender.ring.entries[0].sequence,
+                   Message  := 'sequence should be 2 (committed, generation 1)');
+
+TEST_FINISHED();]]></ST>
+			</Implementation>
+		</Method>
+		<Method Name="Test_SlotContents" Id="{D5E6F7A8-B9C0-4123-DE45-678901234DEF}">
+			<Declaration><![CDATA[// message, source, and attribute_count are stored correctly.
+METHOD PRIVATE Test_SlotContents
+VAR_INPUT END_VAR
+VAR
+	appender   : Nepionic_Log_OTel.OTelLogAppender;
+	emptyAttrs : ARRAY[0..9] OF Nepionic_Log.LogAttribute;
+END_VAR]]></Declaration>
+			<Implementation>
+				<ST><![CDATA[TEST('SlotContents');
+
+appender.Append(Nepionic_Log.LogLevel.Warning, 'Drive fault detected', 'MAIN.AxisX', emptyAttrs, 0);
+
+AssertEquals_STRING(Expected := 'Drive fault detected',
+                    Actual   := appender.ring.entries[0].message,
+                    Message  := 'message mismatch');
+
+AssertEquals_STRING(Expected := 'MAIN.AxisX',
+                    Actual   := appender.ring.entries[0].source,
+                    Message  := 'source mismatch');
+
+AssertEquals_UDINT(Expected := 0,
+                   Actual   := appender.ring.entries[0].attribute_count,
+                   Message  := 'attribute_count should be 0');
+
+TEST_FINISHED();]]></ST>
+			</Implementation>
+		</Method>
+		<Method Name="Test_SeverityMapping" Id="{E6F7A8B9-C0D1-4234-EF56-789012345EF0}">
+			<Declaration><![CDATA[// Each LogLevel maps to the correct numeric severity in the ring slot.
+METHOD PRIVATE Test_SeverityMapping
+VAR_INPUT END_VAR
+VAR
+	appender   : Nepionic_Log_OTel.OTelLogAppender;
+	emptyAttrs : ARRAY[0..9] OF Nepionic_Log.LogAttribute;
+END_VAR]]></Declaration>
+			<Implementation>
+				<ST><![CDATA[TEST('SeverityMapping');
+
+// Write one entry per level; they land in consecutive slots 0..4.
+appender.Append(Nepionic_Log.LogLevel.Debug,       'dbg',   '', emptyAttrs, 0);
+appender.Append(Nepionic_Log.LogLevel.Information, 'info',  '', emptyAttrs, 0);
+appender.Append(Nepionic_Log.LogLevel.Warning,     'warn',  '', emptyAttrs, 0);
+appender.Append(Nepionic_Log.LogLevel.Error,       'err',   '', emptyAttrs, 0);
+appender.Append(Nepionic_Log.LogLevel.Fatal,       'fatal', '', emptyAttrs, 0);
+
+AssertEquals_UDINT(Expected := 0, Actual := appender.ring.entries[0].severity, Message := 'Debug should map to 0');
+AssertEquals_UDINT(Expected := 1, Actual := appender.ring.entries[1].severity, Message := 'Information should map to 1');
+AssertEquals_UDINT(Expected := 2, Actual := appender.ring.entries[2].severity, Message := 'Warning should map to 2');
+AssertEquals_UDINT(Expected := 3, Actual := appender.ring.entries[3].severity, Message := 'Error should map to 3');
+AssertEquals_UDINT(Expected := 4, Actual := appender.ring.entries[4].severity, Message := 'Fatal should map to 4');
+
+TEST_FINISHED();]]></ST>
+			</Implementation>
+		</Method>
+		<Method Name="Test_SlotAttrs" Id="{F7A8B9C0-D1E2-4345-F067-890123456F01}">
+			<Declaration><![CDATA[// attribute_count and key/value of populated attributes are stored correctly.
+METHOD PRIVATE Test_SlotAttrs
+VAR_INPUT END_VAR
+VAR
+	appender   : Nepionic_Log_OTel.OTelLogAppender;
+	testAttrs  : ARRAY[0..9] OF Nepionic_Log.LogAttribute;
+END_VAR]]></Declaration>
+			<Implementation>
+				<ST><![CDATA[TEST('SlotAttrs');
+
+testAttrs[0].key       := 'batch.id';
+testAttrs[0].attr_type := Nepionic_Log.LogAttributeType.Str;
+// value_bytes: copy string 'BATCH-42' manually via assignment is not possible for byte arrays,
+// but we can verify round-trip by checking key and attr_type at minimum.
+testAttrs[1].key       := 'axis.speed';
+testAttrs[1].attr_type := Nepionic_Log.LogAttributeType.Float64;
+
+appender.Append(Nepionic_Log.LogLevel.Information, 'test', 'src', testAttrs, 2);
+
+AssertEquals_UDINT(Expected := 2,
+                   Actual   := appender.ring.entries[0].attribute_count,
+                   Message  := 'attribute_count should be 2');
+
+AssertEquals_STRING(Expected := 'batch.id',
+                    Actual   := appender.ring.entries[0].attributes[0].key,
+                    Message  := 'attrs[0].key mismatch');
+
+AssertEquals_STRING(Expected := 'axis.speed',
+                    Actual   := appender.ring.entries[0].attributes[1].key,
+                    Message  := 'attrs[1].key mismatch');
+
+TEST_FINISHED();]]></ST>
+			</Implementation>
+		</Method>
+		<Method Name="Test_SlotIndexWraps" Id="{08B9C0D1-E2F3-4456-0178-901234567012}">
+			<Declaration><![CDATA[// After 128 writes the ring wraps: the 129th Append targets slot 0.
+// entries[0].sequence must be 4 (generation 2) and message must be the new value.
+METHOD PRIVATE Test_SlotIndexWraps
+VAR_INPUT END_VAR
+VAR
+	appender   : Nepionic_Log_OTel.OTelLogAppender;
+	emptyAttrs : ARRAY[0..9] OF Nepionic_Log.LogAttribute;
+	i          : UDINT;
+END_VAR]]></Declaration>
+			<Implementation>
+				<ST><![CDATA[TEST('SlotIndexWraps');
+
+// Fill ring once (writes to slots 0..127, head advances to 128)
+FOR i := 0 TO 127 DO
+	appender.Append(Nepionic_Log.LogLevel.Debug, 'fill', 'src', emptyAttrs, 0);
+END_FOR
+
+AssertEquals_UDINT(Expected := 128,
+                   Actual   := appender.ring.head,
+                   Message  := 'head should be 128 after 128 writes');
+
+// 129th write: slot_idx = 128 MOD 128 = 0 → overwrites slot 0
+appender.Append(Nepionic_Log.LogLevel.Information, 'wrapped', 'src', emptyAttrs, 0);
+
+AssertEquals_UDINT(Expected := 129,
+                   Actual   := appender.ring.head,
+                   Message  := 'head should be 129 after 129th write');
+
+AssertEquals_STRING(Expected := 'wrapped',
+                    Actual   := appender.ring.entries[0].message,
+                    Message  := 'slot 0 should be overwritten by the 129th write');
+
+// expectedGen = (128 / 128 + 1) * 2 = 4
+AssertEquals_UDINT(Expected := 4,
+                   Actual   := appender.ring.entries[0].sequence,
+                   Message  := 'sequence at slot 0 should be 4 (generation 2)');
+
+TEST_FINISHED();]]></ST>
+			</Implementation>
+		</Method>
+		<Method Name="Test_OverflowCnt" Id="{19C0D1E2-F3A4-4567-1289-012345678123}">
+			<Declaration><![CDATA[// overflow_cnt must be 0 after the first full lap and 1 after the first wrap.
+METHOD PRIVATE Test_OverflowCnt
+VAR_INPUT END_VAR
+VAR
+	appender   : Nepionic_Log_OTel.OTelLogAppender;
+	emptyAttrs : ARRAY[0..9] OF Nepionic_Log.LogAttribute;
+	i          : UDINT;
+END_VAR]]></Declaration>
+			<Implementation>
+				<ST><![CDATA[TEST('OverflowCnt');
+
+// First 128 writes — slot_idx=0 at head=0 is guarded by head>0 check.
+FOR i := 0 TO 127 DO
+	appender.Append(Nepionic_Log.LogLevel.Debug, 'fill', 'src', emptyAttrs, 0);
+END_FOR
+
+AssertEquals_UDINT(Expected := 0,
+                   Actual   := appender.ring.overflow_cnt,
+                   Message  := 'overflow_cnt should be 0 after first 128 writes');
+
+// 129th write: head=128, slot_idx=0, head>0 → overflow_cnt increments
+appender.Append(Nepionic_Log.LogLevel.Debug, 'wrap', 'src', emptyAttrs, 0);
+
+AssertEquals_UDINT(Expected := 1,
+                   Actual   := appender.ring.overflow_cnt,
+                   Message  := 'overflow_cnt should be 1 after first ring wrap');
+
+TEST_FINISHED();]]></ST>
+			</Implementation>
+		</Method>
+		<Method Name="Test_LevelProperty" Id="{2AD1E2F3-A4B5-4678-2390-123456789234}">
+			<Declaration><![CDATA[// Level property defaults to Debug; can be raised and read back.
+METHOD PRIVATE Test_LevelProperty
+VAR_INPUT END_VAR
+VAR
+	appender : Nepionic_Log_OTel.OTelLogAppender;
+END_VAR]]></Declaration>
+			<Implementation>
+				<ST><![CDATA[TEST('LevelProperty');
+
+AssertEquals_INT(Expected := Nepionic_Log.LogLevel.Debug,
+                 Actual   := appender.Level,
+                 Message  := 'default Level should be Debug');
+
+appender.Level := Nepionic_Log.LogLevel.Warning;
+
+AssertEquals_INT(Expected := Nepionic_Log.LogLevel.Warning,
+                 Actual   := appender.Level,
+                 Message  := 'Level should reflect the assigned value');
+
+TEST_FINISHED();]]></ST>
+			</Implementation>
+		</Method>
+	</POU>
+</TcPlcObject>

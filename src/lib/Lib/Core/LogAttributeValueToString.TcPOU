@@ -1,0 +1,62 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="LogAttributeValueToString" Id="{a0b1c2d3-e4f5-6789-a0b1-c2d3e4f56789}" SpecialFunc="None">
+    <Declaration><![CDATA[/// Formats the value of a log attribute as a human-readable string.
+///
+/// Reads `value_bytes` according to `attr_type` and returns a string
+/// representation suitable for embedding in log messages.
+/// Numeric types are formatted with the standard TwinCAT `*_TO_STRING`
+/// conversions; booleans become `'TRUE'` or `'FALSE'`; strings are
+/// returned as-is (null terminator stripped by assignment).
+FUNCTION PUBLIC LogAttributeValueToString : STRING(62)
+VAR_IN_OUT
+	attr : LogAttribute;
+END_VAR
+VAR
+	base      : PVOID;
+	sint_ptr  : POINTER TO SINT;
+	int_ptr   : POINTER TO INT;
+	dint_ptr  : POINTER TO DINT;
+	lint_ptr  : POINTER TO LINT;
+	usint_ptr : POINTER TO USINT;
+	uint_ptr  : POINTER TO UINT;
+	udint_ptr : POINTER TO UDINT;
+	ulint_ptr : POINTER TO ULINT;
+	real_ptr  : POINTER TO REAL;
+	lreal_ptr : POINTER TO LREAL;
+	str_ptr   : POINTER TO STRING(62);
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// All typed pointers alias the same first byte of value_bytes — no copies needed.
+base    := ADR(attr.value_bytes[0]);
+sint_ptr  := base;
+int_ptr   := base;
+dint_ptr  := base;
+lint_ptr  := base;
+usint_ptr := base;
+uint_ptr  := base;
+udint_ptr := base;
+ulint_ptr := base;
+real_ptr  := base;
+lreal_ptr := base;
+str_ptr   := base;
+
+CASE attr.attr_type OF
+	LogAttributeType.Str:     LogAttributeValueToString := str_ptr^;
+	LogAttributeType.Boolean: LogAttributeValueToString := SEL(attr.value_bytes[0] <> 0, 'FALSE', 'TRUE');
+	LogAttributeType.Int8:    LogAttributeValueToString := SINT_TO_STRING(sint_ptr^);
+	LogAttributeType.Int16:   LogAttributeValueToString := INT_TO_STRING(int_ptr^);
+	LogAttributeType.Int32:   LogAttributeValueToString := DINT_TO_STRING(dint_ptr^);
+	LogAttributeType.Int64:   LogAttributeValueToString := LINT_TO_STRING(lint_ptr^);
+	LogAttributeType.UInt8:   LogAttributeValueToString := USINT_TO_STRING(usint_ptr^);
+	LogAttributeType.UInt16:  LogAttributeValueToString := UINT_TO_STRING(uint_ptr^);
+	LogAttributeType.UInt32:  LogAttributeValueToString := UDINT_TO_STRING(udint_ptr^);
+	LogAttributeType.UInt64:  LogAttributeValueToString := ULINT_TO_STRING(ulint_ptr^);
+	LogAttributeType.Float32: LogAttributeValueToString := REAL_TO_STRING(real_ptr^);
+	LogAttributeType.Float64: LogAttributeValueToString := LREAL_TO_STRING(lreal_ptr^);
+ELSE
+	LogAttributeValueToString := '(unknown)';
+END_CASE]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

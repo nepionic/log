@@ -1,14 +1,28 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <TcPlcObject Version="1.1.0.1">
   <DUT Name="LogAttribute" Id="{ef47fdc6-9af5-420d-bae5-f564b9eecd3b}">
-    <Declaration><![CDATA[// A single structured log attribute — a key/value pair attached to a log entry.
-// Used by LogCore.LogWithAttributes and consumed by OtelLogCore.
+    <Declaration><![CDATA[// A single structured log attribute attached to a log entry.
+//
+// Binary layout (96 bytes, little-endian, matched by the Go otelcol-ads parser):
+//   offset  0..31   key         STRING(31)            = 32 bytes  attribute name
+//   offset 32       attr_type   LogAttributeType      =  1 byte   type tag
+//   offset 33..95   value_bytes ARRAY[0..62] BYTE     = 63 bytes  payload (see attr_type)
+//
+// For attr_type = LogAttributeType.Str (11):
+//   value_bytes holds a null-terminated STRING(62).
+// For numeric/bool types, value_bytes[0..N-1] holds the value as little-endian bytes.
 TYPE LogAttribute :
 STRUCT
-	// Attribute name  e.g. 'event.name', 'previous_state'
+	// Attribute name, e.g. 'event.name', 'axis.speed'
 	key : STRING(31);
-	// Attribute value e.g. 'axis.state_changed', 'Idle'
-	value : STRING(63);
+	
+	// Type tag — one of the LogAttrType enum values.
+	attr_type : LogAttributeType;
+
+	// Raw value bytes. Interpretation depends on attr_type.
+	// For String: null-terminated string up to 62 chars.
+	// For numeric/bool: little-endian encoded value in first N bytes.
+	value_bytes : ARRAY[0..62] OF BYTE;
 END_STRUCT
 END_TYPE]]></Declaration>
   </DUT>

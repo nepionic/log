@@ -1,0 +1,24 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="LogAttributeType" Id="{2989cbb7-96df-4fb0-bef3-517a7e3ea56a}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+{attribute 'to_string'}
+TYPE LogAttributeType :
+(
+	Uint8 := 0,
+	Uint16 := 1,
+	Uint32 := 2,
+	Uint64 := 3,
+	Int8 := 4,
+	Int16 := 5,
+	Int32 := 6,
+	Int64 := 7,
+	Boolean := 8,
+	Float32 := 9,
+	Float64 := 10,
+	Str := 11
+) USINT;
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

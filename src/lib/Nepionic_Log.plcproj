@@ -9,7 +9,7 @@
     <WriteProductVersion>false</WriteProductVersion>
     <GenerateTpy>false</GenerateTpy>
     <Name>Nepionic_Log</Name>
-    <ProgramVersion>3.1.4026.20</ProgramVersion>
+    <ProgramVersion>3.1.4026.21</ProgramVersion>
     <WriteBookmarksToFile>true</WriteBookmarksToFile>
     <Application>{67553fcf-27ff-4f0c-ad83-b02def604d5d}</Application>
     <TypeSystem>{dab0d6f8-ca80-47bf-a533-d53fbff51dc6}</TypeSystem>
@@ -20,7 +20,7 @@
     <Company>Nepionic</Company>
     <Released>false</Released>
     <Title>Nepionic_Log</Title>
-    <ProjectVersion>0.1.0</ProjectVersion>
+    <ProjectVersion>0.1.1</ProjectVersion>
     <Author>Nepionic</Author>
     <DefaultNamespace>Nepionic_Log</DefaultNamespace>
     <Placeholder>Nepionic_Log</Placeholder>
@@ -35,6 +35,7 @@
     <SelectedLibraryCategories>
       <Id xmlns="">{2fddf63d-58dd-4964-b1fd-df3c84328371}</Id>
     </SelectedLibraryCategories>
+    <DocFormat>TcDocGen</DocFormat>
   </PropertyGroup>
   <ItemGroup>
     <Folder Include="Lib" />
@@ -86,6 +87,12 @@
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Lib\Core\LogAttribute.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Lib\Core\LogAttributeType.TcDUT">
+      <SubType>Code</SubType>
+    </Compile>
+    <Compile Include="Lib\Core\LogAttributeValueToString.TcPOU">
       <SubType>Code</SubType>
     </Compile>
     <Compile Include="Lib\Core\LogLevel.TcDUT">

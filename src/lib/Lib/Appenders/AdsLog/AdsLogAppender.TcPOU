@@ -52,7 +52,7 @@ IF attribute_count > 0 THEN
 		IF i > 0 THEN
 			text := Tc2_Standard.Concat(text, ', ');
 		END_IF
-		pair := Tc2_Standard.Concat(attributes[i].key, Tc2_Standard.Concat('=', attributes[i].value));
+		pair := Tc2_Standard.Concat(attributes[i].key, Tc2_Standard.Concat('=', LogAttributeValueToString(attributes[i])));
 		text := Tc2_Standard.Concat(text, pair);
 	END_FOR
 	text := Tc2_Standard.Concat(text, '}');

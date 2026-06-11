@@ -65,10 +65,9 @@ text := Tc2_Standard.Concat(text, message);
 IF attribute_count > 0 THEN
 	FOR i := 0 TO attribute_count - 1 DO
 		text := Tc2_Standard.Concat(text, ' ');
-		text := Tc2_Standard.Concat(text, Tc2_Standard.Concat(attributes[i].key, Tc2_Standard.Concat('=', attributes[i].value)));
+		text := Tc2_Standard.Concat(text, Tc2_Standard.Concat(attributes[i].key, Tc2_Standard.Concat('=', Nepionic_Log.LogAttributeValueToString(attributes[i]))));
 	END_FOR
 END_IF
-
 client.SendLog(syslog_severity, text);
 Append := TRUE;]]></ST>
       </Implementation>

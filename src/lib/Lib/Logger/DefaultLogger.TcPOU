@@ -27,13 +27,21 @@
 {attribute 'linkalways'}
 {attribute 'no_explicit_call' := 'This FB is a CLASS and must be accessed using methods or properties'}
 {attribute 'enable_dynamic_creation'}
+{attribute 'reflection'}
 FUNCTION_BLOCK PUBLIC DefaultLogger IMPLEMENTS Logger
 VAR
-	_name : STRING(63);
+	{attribute 'instance-path'}
+    {attribute 'noinit'}
+    instance_path : STRING(255);
+	
+	_name : STRING(255);
 	attributes : ARRAY[0..9] OF LogAttribute;
 	attribute_count : USINT;
 	condition : BOOL := TRUE;
 	chain_started : BOOL;
+END_VAR
+VAR CONSTANT
+	INSTANCE_PATH_KEY_NAME : STRING := 'instance_path';
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[]]></ST>
@@ -87,7 +95,7 @@ Fatal := TRUE;]]></ST>
       <Declaration><![CDATA[METHOD FB_Init : BOOL
 VAR_INPUT
 	bInitRetains : BOOL;
-	bInCopyCode  : BOOL;
+	bInCopyCode : BOOL;
 	/// Component name used as the `source` field on every log record.
 	name : STRING(63);
 END_VAR]]></Declaration>
@@ -184,28 +192,221 @@ Warning := TRUE;]]></ST>
       </Implementation>
     </Method>
     <Method Name="WithAttribute" Id="{8b9c0d1e-2f3a-4567-8b9c-0d1e2f3a4567}">
-      <Declaration><![CDATA[/// Attach a structured key/value attribute to the current log record.
+      <Declaration><![CDATA[/// Attach a string key/value attribute to the current log record.
 /// Call before the terminal method (`Debug`, `Info`, `Warning`, `Error`, `Fatal`).
 /// Up to 10 attributes per record; extras are silently ignored.
-/// This method is chainable:
+/// Chainable:
 /// ```st
-/// log.WithAttribute('key1', 'val1').WithAttribute('key2', 'val2').Info('msg');
+/// log.WithAttribute('state', 'Homing').WithDIntAttribute('pos', position).Info('Moving');
 /// ```
 METHOD PUBLIC WithAttribute : REFERENCE TO DefaultLogger
 VAR_INPUT
 	key : STRING(31);
-	value : STRING(63);
+	value : STRING(62);
 END_VAR]]></Declaration>
       <Implementation>
         <ST><![CDATA[InitChain();
 
 IF attribute_count < 10 THEN
-	attributes[attribute_count].key   := key;
-	attributes[attribute_count].value := value;
+	attributes[attribute_count].key := key;
+	attributes[attribute_count].attr_type := LogAttributeType.Str;
+	Tc2_System.MemCpy(ADR(attributes[attribute_count].value_bytes[0]), ADR(value), SIZEOF(STRING(62)));
 	attribute_count := attribute_count + 1;
 END_IF
 
 WithAttribute REF= THIS^;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="WithBoolAttribute" Id="{1a2b3c4d-5e6f-7001-1a2b-3c4d5e6f7001}">
+      <Declaration><![CDATA[/// Attach a BOOL attribute.
+METHOD PUBLIC WithBoolAttribute : REFERENCE TO DefaultLogger
+VAR_INPUT
+	key : STRING(31);
+	value : BOOL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitChain();
+
+IF attribute_count < 10 THEN
+	attributes[attribute_count].key := key;
+	attributes[attribute_count].attr_type := LogAttributeType.Boolean;
+	attributes[attribute_count].value_bytes[0] := BOOL_TO_BYTE(value);
+	attribute_count := attribute_count + 1;
+END_IF
+
+WithBoolAttribute REF= THIS^;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="WithDIntAttribute" Id="{3c4d5e6f-7001-2233-3c4d-5e6f70012233}">
+      <Declaration><![CDATA[/// Attach a DINT (32-bit signed) attribute.
+METHOD PUBLIC WithDIntAttribute : REFERENCE TO DefaultLogger
+VAR_INPUT
+	key : STRING(31);
+	value : DINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitChain();
+
+IF attribute_count < 10 THEN
+	attributes[attribute_count].key := key;
+	attributes[attribute_count].attr_type := LogAttributeType.Int32;
+	Tc2_System.MemCpy(ADR(attributes[attribute_count].value_bytes[0]), ADR(value), SIZEOF(DINT));
+	attribute_count := attribute_count + 1;
+END_IF
+
+WithDIntAttribute REF= THIS^;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="WithInstancePath" Id="{62217dc2-2346-4aa1-8b58-8fd13aabdf15}">
+      <Declaration><![CDATA[/// Attach the instance path to the current log record.
+/// Call before the terminal method (`Debug`, `Info`, `Warning`, `Error`, `Fatal`).
+/// Chainable:
+/// ```st
+/// log.WithInstancePath().WithDIntAttribute('pos', position).Info('Moving');
+/// ```
+METHOD PUBLIC WithInstancePath : REFERENCE TO DefaultLogger]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[WithInstancePath REF= WithAttribute(INSTANCE_PATH_KEY_NAME, instance_path);]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="WithIntAttribute" Id="{2b3c4d5e-6f70-1122-2b3c-4d5e6f701122}">
+      <Declaration><![CDATA[/// Attach an INT (16-bit signed) attribute.
+METHOD PUBLIC WithIntAttribute : REFERENCE TO DefaultLogger
+VAR_INPUT
+	key : STRING(31);
+	value : INT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitChain();
+
+IF attribute_count < 10 THEN
+	attributes[attribute_count].key := key;
+	attributes[attribute_count].attr_type := LogAttributeType.Int16;
+	Tc2_System.MemCpy(ADR(attributes[attribute_count].value_bytes[0]), ADR(value), SIZEOF(INT));
+	attribute_count := attribute_count + 1;
+END_IF
+
+WithIntAttribute REF= THIS^;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="WithLIntAttribute" Id="{4d5e6f70-0112-3344-4d5e-6f7001123344}">
+      <Declaration><![CDATA[/// Attach a LINT (64-bit signed) attribute.
+METHOD PUBLIC WithLIntAttribute : REFERENCE TO DefaultLogger
+VAR_INPUT
+	key : STRING(31);
+	value : LINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitChain();
+
+IF attribute_count < 10 THEN
+	attributes[attribute_count].key := key;
+	attributes[attribute_count].attr_type := LogAttributeType.Int64;
+	Tc2_System.MemCpy(ADR(attributes[attribute_count].value_bytes[0]), ADR(value), SIZEOF(LINT));
+	attribute_count := attribute_count + 1;
+END_IF
+
+WithLIntAttribute REF= THIS^;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="WithLRealAttribute" Id="{12233445-5667-8899-1223-344556678899}">
+      <Declaration><![CDATA[/// Attach an LREAL (64-bit float) attribute.
+METHOD PUBLIC WithLRealAttribute : REFERENCE TO DefaultLogger
+VAR_INPUT
+	key : STRING(31);
+	value : LREAL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitChain();
+
+IF attribute_count < 10 THEN
+	attributes[attribute_count].key := key;
+	attributes[attribute_count].attr_type := LogAttributeType.Float64;
+	Tc2_System.MemCpy(ADR(attributes[attribute_count].value_bytes[0]), ADR(value), SIZEOF(LREAL));
+	attribute_count := attribute_count + 1;
+END_IF
+
+WithLRealAttribute REF= THIS^;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="WithRealAttribute" Id="{01122334-4556-7788-0112-233445567788}">
+      <Declaration><![CDATA[/// Attach a REAL (32-bit float) attribute.
+METHOD PUBLIC WithRealAttribute : REFERENCE TO DefaultLogger
+VAR_INPUT
+	key : STRING(31);
+	value : REAL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitChain();
+
+IF attribute_count < 10 THEN
+	attributes[attribute_count].key := key;
+	attributes[attribute_count].attr_type := LogAttributeType.Float32;
+	Tc2_System.MemCpy(ADR(attributes[attribute_count].value_bytes[0]), ADR(value), SIZEOF(REAL));
+	attribute_count := attribute_count + 1;
+END_IF
+
+WithRealAttribute REF= THIS^;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="WithUDIntAttribute" Id="{6f700112-2334-5566-6f70-011223345566}">
+      <Declaration><![CDATA[/// Attach a UDINT (32-bit unsigned) attribute.
+METHOD PUBLIC WithUDIntAttribute : REFERENCE TO DefaultLogger
+VAR_INPUT
+	key : STRING(31);
+	value : UDINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitChain();
+
+IF attribute_count < 10 THEN
+	attributes[attribute_count].key := key;
+	attributes[attribute_count].attr_type := LogAttributeType.Uint32;
+	Tc2_System.MemCpy(ADR(attributes[attribute_count].value_bytes[0]), ADR(value), SIZEOF(UDINT));
+	attribute_count := attribute_count + 1;
+END_IF
+
+WithUDIntAttribute REF= THIS^;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="WithUIntAttribute" Id="{5e6f7001-1223-4455-5e6f-700112234455}">
+      <Declaration><![CDATA[/// Attach a UINT (16-bit unsigned) attribute.
+METHOD PUBLIC WithUIntAttribute : REFERENCE TO DefaultLogger
+VAR_INPUT
+	key : STRING(31);
+	value : UINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitChain();
+
+IF attribute_count < 10 THEN
+	attributes[attribute_count].key := key;
+	attributes[attribute_count].attr_type := LogAttributeType.Uint16;
+	Tc2_System.MemCpy(ADR(attributes[attribute_count].value_bytes[0]), ADR(value), SIZEOF(UINT));
+	attribute_count := attribute_count + 1;
+END_IF
+
+WithUIntAttribute REF= THIS^;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="WithULIntAttribute" Id="{70011223-3445-6677-7001-122334456677}">
+      <Declaration><![CDATA[/// Attach a ULINT (64-bit unsigned) attribute.
+METHOD PUBLIC WithULIntAttribute : REFERENCE TO DefaultLogger
+VAR_INPUT
+	key : STRING(31);
+	value : ULINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[InitChain();
+
+IF attribute_count < 10 THEN
+	attributes[attribute_count].key := key;
+	attributes[attribute_count].attr_type := LogAttributeType.Uint64;
+	Tc2_System.MemCpy(ADR(attributes[attribute_count].value_bytes[0]), ADR(value), SIZEOF(ULINT));
+	attribute_count := attribute_count + 1;
+END_IF
+
+WithULIntAttribute REF= THIS^;]]></ST>
       </Implementation>
     </Method>
   </POU>

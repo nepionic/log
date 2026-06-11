@@ -7,10 +7,10 @@
 TYPE LogLevel :
 (
 	Debug := 0,
-	Information,
-	Warning,
-	Error,
-	Fatal
+	Information := 1,
+	Warning := 2,
+	Error := 3,
+	Fatal := 4
 );
 END_TYPE]]></Declaration>
   </DUT>

@@ -7,6 +7,7 @@ VAR
 	syslog_appender : SyslogAppender(hostname := '127.0.0.1', port := 514);
 	otel_log_appender : OTelLogAppender;
 	logger : DefaultLogger('TestRunner');
+	fbTestOTelLogAppender : FB_Test_OTelLogAppender;
 	
 	get_local_ams_netid : Tc2_Utilities.Fb_GetLocalAmsNetId;
 	
@@ -15,6 +16,9 @@ VAR
 	message : STRING(255) := 'We modded with 100 nicely!';
 	
 	some_incrementing_value : UDINT;
+	
+	yeah_boi : BOOL;
+	log_tester : LogTester;
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[IF NOT initialised THEN
@@ -32,13 +36,19 @@ END_IF
 IF some_incrementing_value MOD 100 = 0 THEN
 	logger
 		.WithAttribute('ams-netid', get_local_ams_netid.AddrString)
-		.WithAttribute('some_incrementing_value', UDINT_TO_STRING(some_incrementing_value))
+		.WithUDintAttribute('some_incrementing_value', some_incrementing_value)
 		.Info(message);
 END_IF
 
 some_incrementing_value := some_incrementing_value + 1;
 
-syslog_appender.Execute();]]></ST>
+IF yeah_boi THEN
+	yeah_boi := FALSE;
+	log_tester.YeahBoi();
+END_IF
+
+syslog_appender.Execute();
+fbTestOTelLogAppender();]]></ST>
     </Implementation>
   </POU>
 </TcPlcObject>

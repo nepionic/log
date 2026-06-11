@@ -23,6 +23,7 @@
 /// ```
 FUNCTION_BLOCK PUBLIC OTelLogAppender IMPLEMENTS Nepionic_Log.LogAppender
 VAR
+	{attribute 'otelcol_role' := 'log_ring'}
 	ring : OTelLogRing;
 	_level : Nepionic_Log.LogLevel := Nepionic_Log.LogLevel.Debug;
 END_VAR]]></Declaration>
@@ -45,8 +46,8 @@ VAR
 	i : USINT;
 END_VAR]]></Declaration>
       <Implementation>
-        <ST><![CDATA[slot_idx := ring.head MOD 128;
-expected_gen := (ring.head / 128 + 1) * 2;
+        <ST><![CDATA[slot_idx := ring.head MOD ring.capacity;
+expected_gen := (ring.head / ring.capacity + 1) * 2;
 
 // Mark slot as being written (ODD sequence = write in progress)
 ring.entries[slot_idx].sequence := expected_gen - 1;
@@ -81,6 +82,11 @@ END_FOR
 
 // Commit slot (EVEN sequence = ready for reader)
 ring.entries[slot_idx].sequence := expected_gen;
+
+// Increment overflow counter each time the write pointer wraps back to slot 0.
+IF slot_idx = 0 AND ring.head > 0 THEN
+	ring.overflow_cnt := ring.overflow_cnt + 1;
+END_IF
 
 // Advance write cursor
 ring.head := ring.head + 1;
