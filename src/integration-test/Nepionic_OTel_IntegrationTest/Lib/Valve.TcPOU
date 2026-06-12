@@ -1,0 +1,31 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.18">
+  <POU Name="Valve" Id="{403e72a7-f1b4-4f3a-aaa6-eebcbd767a54}" SpecialFunc="None">
+    <Declaration><![CDATA[/// Simulated latching actuated valve.
+/// Open/Close are momentary command inputs; position is retained between scans.
+/// Open takes priority over Close.
+FUNCTION_BLOCK Valve
+VAR_INPUT
+    Open  : BOOL; /// Momentary command: open the valve.
+    Close : BOOL; /// Momentary command: close the valve.
+END_VAR
+VAR_OUTPUT
+    IsOpen   : BOOL; /// TRUE when valve is in the fully open position.
+    IsClosed : BOOL; /// TRUE when valve is in the fully closed position.
+END_VAR
+VAR
+    _open : BOOL := FALSE;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// Open wins over Close.
+IF Open THEN
+    _open := TRUE;
+ELSIF Close THEN
+    _open := FALSE;
+END_IF
+
+IsOpen   := _open;
+IsClosed := NOT _open;]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

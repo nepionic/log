@@ -1,0 +1,97 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.18">
+  <POU Name="OTelMetricCore" Id="{b1d3c51d-568d-41ae-bf78-cb0b541e365a}" SpecialFunc="None">
+    <Declaration><![CDATA[{attribute 'linkalways'}
+{attribute 'no_explicit_call' := 'This FB is a CLASS and must be accessed using methods or properties'}
+{attribute 'enable_dynamic_creation'}
+/// OTel backend for Nepionic_Metrics.
+/// Implements MetricCore by writing structured metric entries directly into an
+/// OtelMetricRing that is exposed as an ADS symbol and consumed by the Go
+/// otelcol-ads collector via the push_ring path.
+///
+/// Usage:
+///   1. Declare an OtelMetricRing somewhere accessible via ADS (e.g. in a PROGRAM).
+///   2. Set Ring := ADR(myMetricRing) before any Record calls.
+///   3. Assign THIS^ to a Meter instance via meter.Core := THIS^.
+FUNCTION_BLOCK PUBLIC OTelMetricCore IMPLEMENTS Nepionic_Metrics.MetricCore
+VAR
+	_ring : POINTER TO OTelMetricRing;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// No cyclic body — all logic is in methods.]]></ST>
+    </Implementation>
+    <Method Name="Record" Id="{b25a486f-1dcc-475b-ac01-a563fc3bcc94}">
+      <Declaration><![CDATA[METHOD PUBLIC Record : BOOL
+VAR_INPUT
+	name       : STRING(127);
+	unit       : STRING(31);
+	value      : LREAL;
+	kind       : Nepionic_Metrics.MetricKind;
+	attrs      : ARRAY[0..4] OF Nepionic_Metrics.MetricAttribute;
+	attr_count : USINT;
+END_VAR
+VAR
+	slot_idx : UDINT;
+	expected_gen : UDINT;
+	ft : Tc2_Utilities.T_FILETIME;
+	ft_ulint : ULINT;
+	i : USINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF _ring = 0 THEN
+	Record := FALSE;
+	RETURN;
+END_IF
+
+slot_idx     := _ring^.head MOD _ring^.capacity;
+expected_gen := (_ring^.head / _ring^.capacity + 1) * 2;
+
+// Mark slot as being written (ODD sequence = write in progress)
+_ring^.entries[slot_idx].sequence := expected_gen - 1;
+
+// Capture timestamp — Windows FILETIME to Unix nanoseconds
+//ft := Tc2_Utilities.F_GetSystemTime();
+ft_ulint := Tc2_Utilities.F_GetSystemTime(); //SHL(DWORD_TO_ULINT(ft.dwHighDateTime), 32) OR DWORD_TO_ULINT(ft.dwLowDateTime);
+_ring^.entries[slot_idx].timestamp := (ft_ulint - 116444736000000000) * 100;
+
+_ring^.entries[slot_idx].kind       := TO_UDINT(kind);
+_ring^.entries[slot_idx].name       := name;
+_ring^.entries[slot_idx].unit       := unit;
+_ring^.entries[slot_idx].value      := value;
+_ring^.entries[slot_idx].attr_count := USINT_TO_UDINT(attr_count);
+
+FOR i := 0 TO 4 DO
+	_ring^.entries[slot_idx].attrs[i] := attrs[i];
+END_FOR
+
+// Increment overflow counter each time the write pointer wraps back to slot 0.
+// slot_idx = 0 and head > 0 means we are about to overwrite the oldest entries.
+IF slot_idx = 0 AND _ring^.head > 0 THEN
+	_ring^.overflow_cnt := _ring^.overflow_cnt + 1;
+END_IF
+
+// Mark slot as committed (EVEN sequence = ready to read)
+_ring^.entries[slot_idx].sequence := expected_gen;
+
+_ring^.head := _ring^.head + 1;
+Record := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Ring" Id="{7ad9ad1d-d95f-4a90-a466-cf6104dc3c34}">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC Ring : POINTER TO OTelMetricRing]]></Declaration>
+      <Get Name="Get" Id="{41092de9-50c0-47d5-93bf-923e88de1084}">
+        <Declaration><![CDATA[VAR END_VAR]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Ring := _ring;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{1e1afd6d-114d-4436-ac11-1e82a8d879e3}">
+        <Declaration><![CDATA[VAR END_VAR]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[_ring := Ring;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+  </POU>
+</TcPlcObject>

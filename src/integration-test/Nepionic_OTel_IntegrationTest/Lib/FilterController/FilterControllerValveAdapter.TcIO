@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.18">
+  <Itf Name="FilterControllerValveAdapter" Id="{72d07dd1-063f-4109-a912-d25c8e7ef58e}">
+    <Declaration><![CDATA[INTERFACE PUBLIC FilterControllerValveAdapter EXTENDS __System.IQueryInterface]]></Declaration>
+    <Method Name="Close" Id="{5d7ff1d8-f195-4671-8703-892ffb495f7b}">
+      <Declaration><![CDATA[METHOD PUBLIC Close]]></Declaration>
+    </Method>
+    <Property Name="IsClosed" Id="{36d5d082-12cf-42a0-8c20-ba24889fed71}">
+      <Declaration><![CDATA[PROPERTY PUBLIC IsClosed : BOOL]]></Declaration>
+      <Get Name="Get" Id="{05708639-8494-4baa-a852-261b367389ed}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
+    <Property Name="IsClosing" Id="{474649b8-dd20-4bb5-a39c-cd3bfec0dbbe}">
+      <Declaration><![CDATA[PROPERTY PUBLIC IsClosing : BOOL]]></Declaration>
+      <Get Name="Get" Id="{8173945a-8b14-4a02-9b03-a4d3d03495f5}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
+    <Property Name="IsOpen" Id="{38a0989b-dfdd-4612-b996-6f663b3fe82e}">
+      <Declaration><![CDATA[PROPERTY PUBLIC IsOpen : BOOL]]></Declaration>
+      <Get Name="Get" Id="{9dbec55b-4c8f-43ac-a630-b5e75fe15e18}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
+    <Property Name="IsOpening" Id="{9ffff55d-1bf8-40c9-ae34-deab1be7754f}">
+      <Declaration><![CDATA[PROPERTY PUBLIC IsOpening : BOOL]]></Declaration>
+      <Get Name="Get" Id="{c593ee83-a96b-4ee4-8639-084ef7628c48}">
+        <Declaration><![CDATA[]]></Declaration>
+      </Get>
+    </Property>
+    <Method Name="Open" Id="{8952f25f-4503-4982-80c8-6fb01edfacfb}">
+      <Declaration><![CDATA[METHOD PUBLIC Open]]></Declaration>
+    </Method>
+  </Itf>
+</TcPlcObject>

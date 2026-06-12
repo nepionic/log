@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.18">
+  <DUT Name="FilterState" Id="{B1B2B3B4-C5C6-4D7D-8E8E-F0F1F2F3F4F5}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+{attribute 'to_string'}
+/// State machine states for the self-cleaning sand filter backwash controller.
+TYPE FilterState :
+(
+    /// Both filter modules in service; blockage accumulating gradually.
+    Filtering       := 0,
+    /// Module A reverse-flow backwash valve open; Module B carrying all forward flow.
+    BackwashA       := 1,
+    /// Both backwash valves closed; inter-module settling delay.
+    PauseBetween    := 2,
+    /// Module B reverse-flow backwash valve open; Module A carrying all forward flow.
+    BackwashB       := 3,
+    /// Both valves closed; post-backwash settling before resuming Filtering.
+    PostBackwash    := 4
+);
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

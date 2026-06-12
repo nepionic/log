@@ -1,0 +1,34 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.20">
+	<DUT Name="OTelMetricEntry" Id="{4DB4B951-47F1-41B2-824D-1241BECF871B}">
+		<Declaration><![CDATA[// One slot in OtelMetricRing.
+//
+// Binary layout (672 bytes, little-endian — matches Go parser in adsbridge/ringbuf.go):
+//
+//   offset   0  ULINT   timestamp         Unix epoch nanoseconds
+//   offset   8  UDINT   kind              0=Gauge 1=Counter 2=UpDownCounter
+//   offset  12  UDINT   attr_count        Number of populated attrs (0..5)
+//   offset  16  BYTE[128] name            STRING(127) null-terminated
+//   offset 144  BYTE[32]  unit            STRING(31)  null-terminated
+//   offset 176  LREAL   value             Metric value
+//   offset 184  MetricAttribute[5]        5 x 96 bytes = 480 bytes
+//                                           key STRING(31)=32 bytes
+//                                           value STRING(63)=64 bytes
+//   offset 664  BYTE[4]   _pad
+//   offset 668  UDINT   sequence          ODD=being written, EVEN=committed (LAST field)
+//   Total: 672 bytes
+TYPE OTelMetricEntry :
+STRUCT
+	timestamp  : ULINT;
+	kind       : UDINT;
+	attr_count : UDINT;
+	name       : STRING(127);
+	unit       : STRING(31);
+	value      : LREAL;
+	attrs      : ARRAY[0..4] OF Nepionic_Metrics.MetricAttribute;
+	_pad       : ARRAY[0..3] OF BYTE;
+	sequence   : UDINT;
+END_STRUCT
+END_TYPE]]></Declaration>
+	</DUT>
+</TcPlcObject>

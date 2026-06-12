@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="MetricKind" Id="{a014bea1-bb58-4243-84bd-77ee1315ae72}">
+    <Declaration><![CDATA[{attribute 'qualified_only'}
+{attribute 'strict'}
+{attribute 'to_string'}
+TYPE MetricKind : (
+	Gauge := 0,
+	Counter := 1,
+	UpDownCounter := 2
+) UDINT;
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

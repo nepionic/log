@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <Itf Name="MetricCore" Id="{42b6bee8-298d-4a17-b361-29fc01976c21}">
+    <Declaration><![CDATA[INTERFACE MetricCore]]></Declaration>
+    <Method Name="Record" Id="{e62ca18a-767c-4180-82b0-0848ee9f6ca9}">
+      <Declaration><![CDATA[// Record a single metric data point.
+// Backends that do not support structured attributes should ignore attrs/attr_count.
+METHOD PUBLIC Record : BOOL
+VAR_INPUT
+	name : STRING(127);
+	unit : STRING(31);
+	value : LREAL;
+	kind : MetricKind;
+	attrs : ARRAY[0..4] OF MetricAttribute;
+	attr_count : USINT;
+END_VAR]]></Declaration>
+    </Method>
+  </Itf>
+</TcPlcObject>

@@ -1,0 +1,111 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="Meter" Id="{24321528-7837-43ab-8087-7d145c25b545}" SpecialFunc="None">
+    <Declaration><![CDATA[{attribute 'linkalways'}
+{attribute 'no_explicit_call' := 'This FB is a CLASS and must be accessed using methods or properties'}
+{attribute 'enable_dynamic_creation'}
+/// Otel-like metrics client. Wire a MetricCore backend via the Core property,
+/// then call Gauge/Counter/UpDownCounter to record data points.
+/// Attributes can be attached to the next call using WithAttribute chaining.
+///
+/// Example:
+///   meter.WithAttribute('axis.id', '3').Gauge('plc.axis.position', 'mm', pos);
+FUNCTION_BLOCK PUBLIC Meter
+VAR
+	_core : MetricCore;
+	attrs : ARRAY[0..4] OF MetricAttribute;
+	attr_count  : USINT;
+	initialised : BOOL;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Property Name="Core" Id="{ae46e989-ea58-45e9-9f09-7d5936b7a9dd}">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC Core : MetricCore]]></Declaration>
+      <Get Name="Get" Id="{3d17015f-bf5e-4c11-ab4c-70032aa693b1}">
+        <Declaration><![CDATA[PUBLIC]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Core := _core;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{6ce16cd8-45e1-403e-ad81-0ddec30d5882}">
+        <Declaration><![CDATA[PUBLIC]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[_core := Core;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+    <Method Name="Counter" Id="{f810d086-7629-4bda-a459-b6921ab88f84}">
+      <Declaration><![CDATA[/// Record a monotonically increasing counter data point.
+METHOD PUBLIC Counter
+VAR_INPUT
+	name : STRING(127);
+	unit : STRING(31);
+	value : LREAL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF _core <> 0 THEN
+	_core.Record(name, unit, value, MetricKind.Counter, attrs, attr_count);
+END_IF
+attr_count := 0;
+initialised := FALSE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Gauge" Id="{b2f43c4d-72a2-48d9-ac50-eae197f669a8}">
+      <Declaration><![CDATA[/// Record a gauge (instantaneous) data point.
+METHOD PUBLIC Gauge
+VAR_INPUT
+	name : STRING(127);
+	unit : STRING(31);
+	value : LREAL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF _core <> 0 THEN
+	_core.Record(name, unit, value, MetricKind.Gauge, attrs, attr_count);
+END_IF
+attr_count := 0;
+initialised := FALSE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="UpDownCounter" Id="{aae6c8f5-1405-4f52-a89f-ce452bb8bd9c}">
+      <Declaration><![CDATA[/// Record an up/down counter data point (can increase or decrease).
+METHOD PUBLIC UpDownCounter
+VAR_INPUT
+	name : STRING(127);
+	unit : STRING(31);
+	value : LREAL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF _core <> 0 THEN
+	_core.Record(name, unit, value, MetricKind.UpDownCounter, attrs, attr_count);
+END_IF
+attr_count := 0;
+initialised := FALSE;]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="WithAttribute" Id="{988820e6-121e-43eb-96aa-4ebf85a55fb3}">
+      <Declaration><![CDATA[/// Attach a key/value attribute to the next metric call. Up to 5 attributes;
+/// extras are silently ignored. Resets after each sink call.
+METHOD PUBLIC WithAttribute : REFERENCE TO Meter
+VAR_INPUT
+	key : STRING(31);
+	value : STRING(63);
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[IF NOT initialised THEN
+	attr_count := 0;
+	initialised := TRUE;
+END_IF
+
+IF attr_count < 5 THEN
+	attrs[attr_count].key   := key;
+	attrs[attr_count].value := value;
+	attr_count := attr_count + 1;
+END_IF
+
+WithAttribute REF= THIS^;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

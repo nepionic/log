@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.18">
+  <DUT Name="FilterConfig" Id="{A1A2A3A4-B5B6-4C7C-8D8D-E0E1E2E3E4E5}">
+    <Declaration><![CDATA[/// Configuration parameters for the sand filter simulation.
+/// All *_s fields are in simulated seconds.
+/// Real elapsed time = simulated_time / time_scale.
+TYPE FilterConfig :
+STRUCT
+    /// Nominal (clean-filter) differential pressure across the filter bank (bar).
+    dp_nominal_bar         : LREAL := 0.15;
+    /// Differential pressure that triggers a backwash cycle (bar).
+    dp_trigger_bar         : LREAL := 0.80;
+    /// Theoretical maximum differential pressure of a fully blocked filter (bar).
+    dp_max_bar             : LREAL := 1.40;
+    /// Nominal pump flow rate during normal two-module filtering (L/min).
+    flow_nominal_lpm       : LREAL := 500.0;
+    /// Reduced pump flow rate during backwash — one module out of service (L/min).
+    flow_backwash_lpm      : LREAL := 340.0;
+    /// Static inlet pressure at nominal flow with a clean filter (bar).
+    pressure_inlet_bar     : LREAL := 2.50;
+    /// Simulated time for the filter to block from clean to dp_trigger_bar (seconds).
+    blockage_time_s        : LREAL := 300.0;
+    /// Duration of each individual module backwash phase (simulated seconds).
+    backwash_duration_s    : LREAL := 30.0;
+    /// Settling delay between Module A backwash end and Module B backwash start
+    /// (simulated seconds).
+    inter_backwash_delay_s : LREAL := 5.0;
+    /// Post-backwash settling period before resuming normal filtering
+    /// (simulated seconds).
+    post_backwash_settle_s : LREAL := 10.0;
+    /// Simulation time scale: simulated seconds that pass per real second.
+    /// 10.0 means the filter blocks in blockage_time_s/10 real seconds.
+    time_scale             : LREAL := 10.0;
+    /// PLC task cycle time (ms) — used for per-scan blockage accumulation.
+    cycle_time_ms          : LREAL := 10.0;
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

@@ -1,0 +1,12 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="MetricAttribute" Id="{2b8deae3-c8a3-4bbb-a37e-45bbb04ec461}">
+    <Declaration><![CDATA[// A single structured metric attribute — a key/value label attached to a metric data point.
+TYPE MetricAttribute :
+STRUCT
+	key : STRING(31);
+	value : STRING(63);
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

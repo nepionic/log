@@ -1,0 +1,43 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.18">
+  <POU Name="FilterController" Id="{e0707ff9-2ad8-46f9-b896-b5e3df06f027}" SpecialFunc="None">
+    <Declaration><![CDATA[{attribute 'linkalways'}
+{attribute 'no_explicit_call' := 'This FB is a CLASS and must be accessed using methods or properties'}
+{attribute 'enable_dynamic_creation'}
+FUNCTION_BLOCK FilterController
+VAR_GENERIC CONSTANT
+	MODULE_COUNT : UINT(1..999);
+END_VAR
+VAR
+	pressure_provider : FilterDifferentialPressureProvider;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Property Name="DifferentialPressure" Id="{b2fc1bde-2712-4f71-8002-5afef2dca9ac}">
+      <Declaration><![CDATA[PROPERTY PUBLIC DifferentialPressure : LREAL]]></Declaration>
+      <Get Name="Get" Id="{6078db2d-90f0-4f5e-b306-84cd96a14efd}">
+        <Declaration><![CDATA[PUBLIC]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[DifferentialPressure := pressure_provider.Pressure;]]></ST>
+        </Implementation>
+      </Get>
+    </Property>
+    <Method Name="FB_Init" Id="{5f0f3ded-29ca-4c67-9f78-238711239a41}">
+      <Declaration><![CDATA[//FB_Init is always available implicitly and it is used primarily for initialization.
+//The return value is not evaluated. For a specific influence, you can also declare the
+//methods explicitly and provide additional code there with the standard initialization
+//code. You can evaluate the return value.
+METHOD FB_Init: BOOL
+VAR_INPUT
+    bInitRetains: BOOL; // TRUE: the retain variables are initialized (reset warm / reset cold)
+    bInCopyCode: BOOL;  // TRUE: the instance will be copied to the copy code afterward (online change)
+	pressure_provider : FilterDifferentialPressureProvider;
+	reverse_flow_valve_adapter : ARRAY[0..MODULE_COUNT] OF LREAL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[THIS^.pressure_provider := pressure_provider;]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>

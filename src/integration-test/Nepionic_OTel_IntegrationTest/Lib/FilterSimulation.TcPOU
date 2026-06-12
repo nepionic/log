@@ -1,0 +1,236 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.18">
+  <POU Name="FilterSimulation" Id="{C1C2C3C4-D5D6-4E7E-8F8F-001122334455}" SpecialFunc="None">
+    <Declaration><![CDATA[/// Simulated reverse-flow self-cleaning sand filter with two filter modules.
+///
+/// Physical model
+/// ─────────────
+/// Filtering (normal):
+///   Pump → Inlet → [Module A + Module B in parallel] → Outlet
+///   Differential pressure rises as both modules accumulate blockage.
+///
+/// Backwash (Module A):
+///   Clean outlet water is diverted backwards through Module A → Waste.
+///   Module B carries all forward flow; DP reflects one module.
+///
+/// Backwash (Module B):  symmetric to Module A.
+///
+/// After BackwashB completes the blockage fraction is reset to zero and the
+/// differential pressure returns to nominal.
+///
+/// Call every PLC scan and read the VAR_OUTPUT fields.
+FUNCTION_BLOCK FilterSimulation
+VAR_INPUT
+    /// Simulation configuration (may be updated at runtime).
+    Config : FilterConfig;
+END_VAR
+VAR_OUTPUT
+    // ── Sensors ───────────────────────────────────────────────────────────────
+    /// Pump flow rate (L/min).
+    PumpFlowLpm         : LREAL;
+    /// Filter bank inlet pressure (bar).
+    PressureInletBar    : LREAL;
+    /// Filter bank outlet pressure (bar).
+    PressureOutletBar   : LREAL;
+    /// Differential pressure across the filter bank: inlet − outlet (bar).
+    DpBar               : LREAL;
+
+    // ── Valve states ──────────────────────────────────────────────────────────
+    /// TRUE when Module A reverse-flow backwash valve is open.
+    ValveAOpen          : BOOL;
+    /// TRUE when Module B reverse-flow backwash valve is open.
+    ValveBOpen          : BOOL;
+
+    // ── Status ────────────────────────────────────────────────────────────────
+    /// Current controller state.
+    State               : FilterState := FilterState.Filtering;
+    /// Number of complete two-module backwash cycles executed since PLC start.
+    BackwashCycles      : UDINT;
+    /// Blockage fraction: 0.0 = completely clean, 1.0 = theoretical dp_max_bar.
+    BlockageFraction    : LREAL;
+
+    // ── Event pulses (TRUE for exactly one scan on the triggering transition) ─
+    /// DP has just exceeded dp_trigger_bar — backwash is about to start.
+    EvFilterBlocked     : BOOL;
+    /// Module A backwash valve has just been opened.
+    EvBackwashStartedA  : BOOL;
+    /// Module B backwash valve has just been opened.
+    EvBackwashStartedB  : BOOL;
+    /// Full two-module backwash cycle just completed; blockage reset to zero.
+    EvBackwashComplete  : BOOL;
+END_VAR
+VAR
+    _blockage         : LREAL := 0.0;  // 0.0 (clean) → 1.0 (at dp_max_bar)
+    _entry            : BOOL  := TRUE; // TRUE on the first scan of a new state
+    _timer            : TON;
+    _timer_pt         : TIME;
+    _valveA           : Valve;
+    _valveB           : Valve;
+    _noise_t          : LREAL := 0.0;  // noise oscillator phase accumulator
+    _noise            : LREAL;         // composite dimensionless noise signal
+    _sim_dt           : LREAL;         // simulated seconds elapsed this scan
+    _blockage_trigger : LREAL;         // blockage fraction that fires backwash
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// ── Per-scan simulated timestep ──────────────────────────────────────────────
+_sim_dt := Config.cycle_time_ms * 0.001 * Config.time_scale;
+
+// Normalised blockage fraction at which dp_trigger_bar is reached.
+_blockage_trigger := (Config.dp_trigger_bar - Config.dp_nominal_bar)
+                   / (Config.dp_max_bar     - Config.dp_nominal_bar);
+
+// ── Multi-frequency noise oscillator ─────────────────────────────────────────
+// Phase advances at ~0.5 rad/real-second, giving a ~12-second noise period.
+_noise_t := _noise_t + Config.cycle_time_ms * 0.001 * 0.5;
+IF _noise_t > 628.0 THEN _noise_t := _noise_t - 628.0; END_IF
+_noise := 0.015 * SIN(_noise_t)
+        + 0.008 * SIN(_noise_t * 2.37 + 1.1)
+        + 0.004 * SIN(_noise_t * 5.13 + 2.3);
+
+// ── Clear event pulses ────────────────────────────────────────────────────────
+EvFilterBlocked    := FALSE;
+EvBackwashStartedA := FALSE;
+EvBackwashStartedB := FALSE;
+EvBackwashComplete := FALSE;
+
+// ── State machine ─────────────────────────────────────────────────────────────
+CASE State OF
+
+    FilterState.Filtering:
+        _valveA(Open := FALSE, Close := TRUE);
+        _valveB(Open := FALSE, Close := TRUE);
+
+        // Blockage accumulates while both modules are filtering.
+        _blockage := MIN(_blockage + _sim_dt / Config.blockage_time_s, 1.0);
+
+        // Trigger backwash when DP crosses dp_trigger_bar.
+        IF _blockage >= _blockage_trigger THEN
+            EvFilterBlocked := TRUE;
+            State           := FilterState.BackwashA;
+            _entry          := TRUE;
+        END_IF
+
+    FilterState.BackwashA:
+        // Module A valve open: clean water from Module B flushes Module A to waste.
+        _valveA(Open := TRUE,  Close := FALSE);
+        _valveB(Open := FALSE, Close := TRUE);
+
+        IF _entry THEN
+            _entry             := FALSE;
+            EvBackwashStartedA := TRUE;
+            _timer(IN := FALSE, PT := T#0S); // reset
+        ELSE
+            _timer_pt := UDINT_TO_TIME(LREAL_TO_UDINT(
+                Config.backwash_duration_s / Config.time_scale * 1000.0));
+            _timer(IN := TRUE, PT := _timer_pt);
+            IF _timer.Q THEN
+                _timer(IN := FALSE, PT := T#0S);
+                State  := FilterState.PauseBetween;
+                _entry := TRUE;
+            END_IF
+        END_IF
+
+    FilterState.PauseBetween:
+        // Both valves closed; brief settling before opening Module B valve.
+        _valveA(Open := FALSE, Close := TRUE);
+        _valveB(Open := FALSE, Close := TRUE);
+
+        IF _entry THEN
+            _entry := FALSE;
+            _timer(IN := FALSE, PT := T#0S);
+        ELSE
+            _timer_pt := UDINT_TO_TIME(LREAL_TO_UDINT(
+                Config.inter_backwash_delay_s / Config.time_scale * 1000.0));
+            _timer(IN := TRUE, PT := _timer_pt);
+            IF _timer.Q THEN
+                _timer(IN := FALSE, PT := T#0S);
+                State  := FilterState.BackwashB;
+                _entry := TRUE;
+            END_IF
+        END_IF
+
+    FilterState.BackwashB:
+        // Module B valve open: clean water from Module A flushes Module B to waste.
+        _valveA(Open := FALSE, Close := TRUE);
+        _valveB(Open := TRUE,  Close := FALSE);
+
+        IF _entry THEN
+            _entry             := FALSE;
+            EvBackwashStartedB := TRUE;
+            _timer(IN := FALSE, PT := T#0S);
+        ELSE
+            _timer_pt := UDINT_TO_TIME(LREAL_TO_UDINT(
+                Config.backwash_duration_s / Config.time_scale * 1000.0));
+            _timer(IN := TRUE, PT := _timer_pt);
+            IF _timer.Q THEN
+                _timer(IN := FALSE, PT := T#0S);
+                _blockage := 0.0;  // Both modules cleaned — reset blockage.
+                State     := FilterState.PostBackwash;
+                _entry    := TRUE;
+            END_IF
+        END_IF
+
+    FilterState.PostBackwash:
+        // Both valves closed; pressure and flow settle before resuming filtering.
+        _valveA(Open := FALSE, Close := TRUE);
+        _valveB(Open := FALSE, Close := TRUE);
+
+        IF _entry THEN
+            _entry             := FALSE;
+            EvBackwashComplete := TRUE;
+            BackwashCycles     := BackwashCycles + 1;
+            _timer(IN := FALSE, PT := T#0S);
+        ELSE
+            _timer_pt := UDINT_TO_TIME(LREAL_TO_UDINT(
+                Config.post_backwash_settle_s / Config.time_scale * 1000.0));
+            _timer(IN := TRUE, PT := _timer_pt);
+            IF _timer.Q THEN
+                _timer(IN := FALSE, PT := T#0S);
+                State  := FilterState.Filtering;
+                _entry := TRUE;
+            END_IF
+        END_IF
+
+END_CASE
+
+// ── Valve outputs ─────────────────────────────────────────────────────────────
+ValveAOpen       := _valveA.IsOpen;
+ValveBOpen       := _valveB.IsOpen;
+BlockageFraction := _blockage;
+
+// ── Differential pressure ─────────────────────────────────────────────────────
+// During backwash one module is bypassed; DP reflects the remaining clean module
+// (slightly above nominal due to full flow through half the filter area).
+// During filtering the DP rises linearly with blockage, noised for realism.
+IF    State = FilterState.BackwashA
+   OR State = FilterState.PauseBetween
+   OR State = FilterState.BackwashB THEN
+    DpBar := Config.dp_nominal_bar * 1.25 * (1.0 + _noise);
+ELSE
+    DpBar := Config.dp_nominal_bar
+           + _blockage * (Config.dp_max_bar - Config.dp_nominal_bar);
+    DpBar := DpBar * (1.0 + _noise);
+END_IF
+DpBar := MAX(DpBar, 0.0);
+
+// ── Inlet pressure ────────────────────────────────────────────────────────────
+// The pump works slightly harder as filter resistance increases.
+PressureInletBar := Config.pressure_inlet_bar
+                  * (1.0 + 0.04 * _blockage)
+                  * (1.0 + _noise * 0.5);
+
+// ── Outlet pressure ───────────────────────────────────────────────────────────
+PressureOutletBar := PressureInletBar - DpBar;
+
+// ── Pump flow ─────────────────────────────────────────────────────────────────
+// Flow drops during backwash: only one module in forward service, plus the
+// backwash return path consumes part of the output.
+IF State = FilterState.BackwashA OR State = FilterState.BackwashB THEN
+    PumpFlowLpm := Config.flow_backwash_lpm * (1.0 + _noise * 0.3);
+ELSE
+    PumpFlowLpm := Config.flow_nominal_lpm  * (1.0 + _noise * 0.3);
+END_IF
+PumpFlowLpm := MAX(PumpFlowLpm, 0.0);]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

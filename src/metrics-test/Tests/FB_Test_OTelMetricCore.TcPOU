@@ -1,0 +1,250 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="FB_Test_OTelMetricCore" Id="{a1b2c3d4-e5f6-4789-ab01-234567890abc}" SpecialFunc="None">
+    <Declaration><![CDATA[/// TcUnit tests for OTelMetricCore.
+/// Exercises ring slot writes, head advancement, sequence tagging,
+/// attribute storage, ring wrap, and overflow counter incrementing.
+FUNCTION_BLOCK FB_Test_OTelMetricCore EXTENDS TcUnit.FB_TestSuite
+VAR
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[Test_NilRing_ReturnsFalse();
+Test_HeadIncrements();
+Test_SequenceCommitted();
+Test_SlotContents();
+Test_SlotAttrs();
+Test_SlotIndexWraps();
+Test_OverflowCnt();]]></ST>
+    </Implementation>
+    <Method Name="Test_HeadIncrements" Id="{c3d4e5f6-a7b8-4901-cd23-456789012cde}">
+      <Declaration><![CDATA[// head advances by 1 after a single successful Record call.
+METHOD PRIVATE Test_HeadIncrements
+VAR_INPUT END_VAR
+VAR
+	localRing  : OTelMetricRing;
+	core       : OTelMetricCore;
+	emptyAttrs : ARRAY[0..4] OF Nepionic_Metrics.MetricAttribute;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[TcUnit.Test('HeadIncrements');
+
+core.Ring := ADR(localRing);
+core.Record('m', 'u', 1.0, Nepionic_Metrics.MetricKind.Gauge, emptyAttrs, 0);
+
+AssertEquals_UDINT(Expected := 1,
+                   Actual   := localRing.head,
+                   Message  := 'head should be 1 after one Record call');
+
+TcUnit.Test_Finished();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_NilRing_ReturnsFalse" Id="{b2c3d4e5-f6a7-4890-bc12-345678901bcd}">
+      <Declaration><![CDATA[// Record returns FALSE when no ring has been assigned (pointer is 0/nil).
+METHOD PRIVATE Test_NilRing_ReturnsFalse
+VAR_INPUT END_VAR
+VAR
+	core       : OTelMetricCore;
+	emptyAttrs : ARRAY[0..4] OF Nepionic_Metrics.MetricAttribute;
+	result     : BOOL;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[TcUnit.Test('NilRing_ReturnsFalse');
+
+// Ring not set — _ring pointer is 0
+result := core.Record('test', 'u', 0.0, Nepionic_Metrics.MetricKind.Gauge, emptyAttrs, 0);
+
+AssertFalse(Condition := result,
+            Message  := 'Record should return FALSE when Ring is nil');
+
+TcUnit.Test_Finished();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_OverflowCnt" Id="{18c9d0e1-f203-4456-1278-901234567123}">
+      <Declaration><![CDATA[// overflow_cnt must be 0 after the first full lap and 1 after the first wrap.
+METHOD PRIVATE Test_OverflowCnt
+VAR_INPUT END_VAR
+VAR
+	localRing  : OTelMetricRing;
+	core       : OTelMetricCore;
+	emptyAttrs : ARRAY[0..4] OF Nepionic_Metrics.MetricAttribute;
+	i          : UDINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[TcUnit.Test('OverflowCnt');
+
+core.Ring := ADR(localRing);
+
+// First 256 writes: slot_idx=0 happens at head=0, but head=0 means it is the
+// very first write — overflow guard (head > 0) prevents false increment.
+FOR i := 0 TO 255 DO
+	core.Record('m', 'u', 0.0, Nepionic_Metrics.MetricKind.Gauge, emptyAttrs, 0);
+END_FOR
+
+AssertEquals_UDINT(Expected := 0,
+                   Actual   := localRing.overflow_cnt,
+                   Message  := 'overflow_cnt should be 0 after first 256 writes');
+
+// 257th write: head=256, slot_idx=0, head>0 → overflow_cnt increments
+core.Record('m', 'u', 0.0, Nepionic_Metrics.MetricKind.Gauge, emptyAttrs, 0);
+
+AssertEquals_UDINT(Expected := 1,
+                   Actual   := localRing.overflow_cnt,
+                   Message  := 'overflow_cnt should be 1 after first ring wrap');
+
+TcUnit.Test_Finished();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_SequenceCommitted" Id="{d4e5f6a7-b8c9-4012-de34-567890123def}">
+      <Declaration><![CDATA[// After writing the first slot (absIdx=0, capacity=256):
+//   expectedGen = (0/256 + 1)*2 = 2
+// The slot sequence must be 2 (EVEN = committed).
+METHOD PRIVATE Test_SequenceCommitted
+VAR_INPUT END_VAR
+VAR
+	localRing  : OTelMetricRing;
+	core       : OTelMetricCore;
+	emptyAttrs : ARRAY[0..4] OF Nepionic_Metrics.MetricAttribute;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[TcUnit.Test('SequenceCommitted');
+
+core.Ring := ADR(localRing);
+core.Record('m', 'u', 1.0, Nepionic_Metrics.MetricKind.Gauge, emptyAttrs, 0);
+
+AssertEquals_UDINT(Expected := 2,
+                   Actual   := localRing.entries[0].sequence,
+                   Message  := 'sequence should be 2 (committed, generation 1)');
+
+TcUnit.Test_Finished();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_SlotAttrs" Id="{f6a7b8c9-d0e1-4234-f056-789012345f01}">
+      <Declaration><![CDATA[// Verify that attr_count and the first two attribute key/value pairs are stored.
+METHOD PRIVATE Test_SlotAttrs
+VAR_INPUT END_VAR
+VAR
+	localRing  : OTelMetricRing;
+	core       : OTelMetricCore;
+	testAttrs  : ARRAY[0..4] OF Nepionic_Metrics.MetricAttribute;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[TcUnit.Test('SlotAttrs');
+
+testAttrs[0].key   := 'axis.id';
+testAttrs[0].value := '3';
+testAttrs[1].key   := 'station';
+testAttrs[1].value := 'feed';
+
+core.Ring := ADR(localRing);
+core.Record('plc.cycles', '{cycles}', 1.0, Nepionic_Metrics.MetricKind.Counter, testAttrs, 2);
+
+AssertEquals_UDINT(Expected := 2,
+                   Actual   := localRing.entries[0].attr_count,
+                   Message  := 'attr_count should be 2');
+
+AssertEquals_STRING(Expected := 'axis.id',
+                    Actual   := localRing.entries[0].attrs[0].key,
+                    Message  := 'attrs[0].key mismatch');
+
+AssertEquals_STRING(Expected := '3',
+                    Actual   := localRing.entries[0].attrs[0].value,
+                    Message  := 'attrs[0].value mismatch');
+
+AssertEquals_STRING(Expected := 'station',
+                    Actual   := localRing.entries[0].attrs[1].key,
+                    Message  := 'attrs[1].key mismatch');
+
+AssertEquals_STRING(Expected := 'feed',
+                    Actual   := localRing.entries[0].attrs[1].value,
+                    Message  := 'attrs[1].value mismatch');
+
+TcUnit.Test_Finished();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_SlotContents" Id="{e5f6a7b8-c9d0-4123-ef45-678901234ef0}">
+      <Declaration><![CDATA[// Verify that name, unit, kind, value and attr_count are all written correctly.
+METHOD PRIVATE Test_SlotContents
+VAR_INPUT END_VAR
+VAR
+	local_ring  : OTelMetricRing;
+	core       : OTelMetricCore;
+	empty_attrs : ARRAY[0..4] OF Nepionic_Metrics.MetricAttribute;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[TcUnit.Test('SlotContents');
+
+core.Ring := ADR(local_ring);
+core.Record('plc.temperature', 'Cel', 98.6, Nepionic_Metrics.MetricKind.Gauge, empty_attrs, 0);
+
+AssertEquals_STRING(Expected := 'plc.temperature',
+                    Actual   := local_ring.entries[0].name,
+                    Message  := 'name mismatch');
+
+AssertEquals_STRING(Expected := 'Cel',
+                    Actual   := local_ring.entries[0].unit,
+                    Message  := 'unit mismatch');
+
+// MetricKind.Gauge = 0
+AssertEquals_UDINT(Expected := 0,
+                   Actual   := local_ring.entries[0].kind,
+                   Message  := 'kind should be Gauge (0)');
+
+AssertEquals_LREAL(Expected := 98.6,
+                   Actual   := local_ring.entries[0].value,
+				   0.01,
+                   Message  := 'value mismatch');
+
+AssertEquals_UDINT(Expected := 0,
+                   Actual   := local_ring.entries[0].attr_count,
+                   Message  := 'attr_count should be 0 when no attrs supplied');
+
+TcUnit.Test_Finished();]]></ST>
+      </Implementation>
+    </Method>
+    <Method Name="Test_SlotIndexWraps" Id="{07b8c9d0-e1f2-4345-0167-890123456012}">
+      <Declaration><![CDATA[// After 256 writes the ring wraps: the 257th write targets slot 0 again.
+// entries[0].sequence must be 4 (generation 2) and name must be the new value.
+METHOD PRIVATE Test_SlotIndexWraps
+VAR_INPUT END_VAR
+VAR
+	local_ring : OTelMetricRing;
+	core : OTelMetricCore;
+	empty_attrs : ARRAY[0..4] OF Nepionic_Metrics.MetricAttribute;
+	i : UDINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[TcUnit.Test('SlotIndexWraps');
+
+core.Ring := ADR(local_ring);
+
+// Fill the ring once (writes to slots 0..255, head advances to 256)
+FOR i := 0 TO 255 DO
+	core.Record('fill', 'u', 0.0, Nepionic_Metrics.MetricKind.Gauge, empty_attrs, 0);
+END_FOR
+
+AssertEquals_UDINT(Expected := 256,
+                   Actual   := local_ring.head,
+                   Message  := 'head should be 256 after 256 writes');
+
+// 257th write: slot_idx = 256 MOD 256 = 0 → overwrites slot 0
+core.Record('wrapped', 'u', 99.0, Nepionic_Metrics.MetricKind.Gauge, empty_attrs, 0);
+
+AssertEquals_UDINT(Expected := 257,
+                   Actual   := local_ring.head,
+                   Message  := 'head should be 257 after 257th write');
+
+// name at slot 0 must now be the wrapped write
+AssertEquals_STRING(Expected := 'wrapped',
+                    Actual   := local_ring.entries[0].name,
+                    Message  := 'slot 0 should be overwritten by the 257th write');
+
+// expectedGen = (256 / 256 + 1) * 2 = 4
+AssertEquals_UDINT(Expected := 4,
+                   Actual   := local_ring.entries[0].sequence,
+                   Message  := 'sequence at slot 0 should be 4 (generation 2)');
+
+TcUnit.Test_Finished();]]></ST>
+      </Implementation>
+    </Method>
+  </POU>
+</TcPlcObject>
