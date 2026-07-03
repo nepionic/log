@@ -33,6 +33,9 @@ VAR
     // ── Metric attribute scratch buffers ──────────────────────────────────────
     m_attrs         : ARRAY[0..4] OF Nepionic_Metrics.MetricAttribute;
     m_empty         : ARRAY[0..4] OF Nepionic_Metrics.MetricAttribute;
+	
+	trigger_div_zero : BOOL;
+	_div_zero : FLOAT;
 END_VAR]]></Declaration>
     <Implementation>
       <ST><![CDATA[// ── One-time initialisation ───────────────────────────────────────────────────
@@ -128,6 +131,11 @@ IF metric_timer.Q THEN
         'filter.valve.backwash_active', '1',
         SEL(sim.ValveBOpen, 0.0, 1.0),
         Nepionic_Metrics.MetricKind.Gauge, m_attrs, 1);
+END_IF
+
+IF trigger_div_zero THEN
+	trigger_div_zero := FALSE;
+	_div_zero := 1 / _div_zero;
 END_IF]]></ST>
     </Implementation>
   </POU>
