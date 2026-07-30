@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <TcPlcObject Version="1.1.0.1">
   <DUT Name="KleinEventRing" Id="{e577b11e-2da1-4542-9944-0579f144816c}">
     <Declaration><![CDATA[// Ring buffer header + 128-slot event entry array.

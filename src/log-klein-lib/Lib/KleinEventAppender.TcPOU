@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <TcPlcObject Version="1.1.0.1">
   <POU Name="KleinEventAppender" Id="{634843c3-bb93-4caa-bda3-9bdca79e4fd3}" SpecialFunc="None">
     <Declaration><![CDATA[{attribute 'linkalways'}

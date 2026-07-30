@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <TcPlcObject Version="1.1.0.1">
   <DUT Name="KleinEventEntry" Id="{ab28cbdd-e5c3-4f5d-a4ff-ddceb891317f}">
     <Declaration><![CDATA[// One slot in the KleinEventRing.
