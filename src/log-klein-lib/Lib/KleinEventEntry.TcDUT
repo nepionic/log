@@ -1,0 +1,74 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <DUT Name="KleinEventEntry" Id="{ab28cbdd-e5c3-4f5d-a4ff-ddceb891317f}">
+    <Declaration><![CDATA[// One slot in the KleinEventRing.
+//
+// Binary layout (1280 bytes, little-endian, IDENTICAL in shape to
+// Nepionic_Log_OTel.OTelLogEntry — see that type's doc comment. This is a
+// deliberate reuse of the same proven wire layout under a new type name, not
+// a coincidence: there is no reason to invent a different byte layout when
+// this one is already implemented, tested, and documented on the Go side
+// (github.com/siyka-au/klein, internal/receiver/ads/eventring.go). Giving it
+// its own type name (rather than literally reusing OTelLogEntry) makes it an
+// independently addressable ADS symbol under Nepionic_Log_Klein, decoupled
+// from the deprecated Nepionic_Log_OTel library.
+//
+//   offset    0  ULINT   timestamp         Unix epoch nanoseconds
+//   offset    8  UDINT   severity          0=Debug 1=Info 2=Warning 3=Error 4=Fatal
+//                                            (raw PLC LogLevel ordinal — see the
+//                                            PLC LogLevel -> Klein Severity mapping below)
+//   offset   12  UDINT   attr_count        Number of populated entries in attrs (0..10)
+//   offset   16  BYTE[192] message         STRING(191) null-terminated
+//   offset  208  BYTE[64]  source          STRING(63)  null-terminated (instance path)
+//   offset  272  BYTE[960] attrs           ARRAY[0..9] OF Nepionic_Log.LogAttribute (96 bytes each)
+//                                            each attr:
+//                                              offset  0  key         STRING(31)       = 32 bytes
+//                                              offset 32  attr_type   LogAttributeType =  1 byte
+//                                              offset 33  value_bytes ARRAY[0..62]     = 63 bytes
+//   offset 1232  BYTE[44]  _pad
+//   offset 1276  UDINT   sequence          ODD=being written, EVEN=committed (LAST field)
+//   Total: 1280 bytes
+//
+// --- PLC LogLevel -> Klein Event mapping (Go: internal/receiver/ads/eventring.go) ---
+//
+// This is the precise mapping the Go decoder (KleinEventEntry -> model.Event)
+// implements, documented here since no PLC toolchain was available in the
+// authoring environment to verify it end-to-end against a live ring:
+//
+//   severity (raw UDINT, PLC LogLevel ordinal) -> model.Severity (klein/internal/model.Event.go):
+//     0 (Debug)       -> SeverityDebug (2)
+//     1 (Information) -> SeverityInfo  (3)
+//     2 (Warning)     -> SeverityWarn  (4)
+//     3 (Error)       -> SeverityError (5)
+//     4 (Fatal)       -> SeverityFatal (6)
+//     anything else   -> SeverityInfo  (3), clamped/defaulted (out-of-range raw value)
+//
+//   message   -> Event.Message                       (verbatim)
+//   source    -> Event.Signal.Path                    (the resulting Event's identity)
+//   source    -> Event.Actor.ID, with Event.Actor.Type fixed to "plc"
+//               (a PLC-origin Event always carries a fixed Actor{Type: "plc", ID: source})
+//   attrs[0..attr_count-1]
+//             -> Event.To, as a model.StructValue{Fields: {attr.key: attr.value, ...}}
+//                only when attr_count > 0 — an Event with no attributes leaves To nil
+//                rather than emitting an empty Struct (Event has no dedicated
+//                attributes field; To/From are otherwise unused by a pure
+//                log-message Event, per docs/SPEC.md §9's "context lives either
+//                as extra fields inside value's Struct, or in the sibling
+//                attributes map" convention, adapted here since Event has no
+//                sibling attributes map of its own).
+//   timestamp -> Event.SourceTimestamp (int64 ns, direct copy)
+{attribute 'pack_mode' := '1'}
+TYPE KleinEventEntry :
+STRUCT
+	timestamp : ULINT;
+	severity : UDINT;
+	attribute_count : UDINT(0..10);
+	message : STRING(191);
+	source : STRING(63);
+	attributes : ARRAY[0..9] OF Nepionic_Log.LogAttribute;
+	_pad : ARRAY[0..43] OF BYTE;
+	sequence : UDINT;
+END_STRUCT
+END_TYPE]]></Declaration>
+  </DUT>
+</TcPlcObject>

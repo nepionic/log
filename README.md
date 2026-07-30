@@ -9,10 +9,11 @@ Structured logging library for TwinCAT 3. Modelled on the Java logging pattern (
 | Library | Description |
 |---|---|
 | `Nepionic_Log` | Core — logger facade, manager, ADS output window appender |
-| `Nepionic_Log_OTel` | OTel ring-buffer appender (consumed by `otelcol-ads` Go collector) |
+| `Nepionic_Log_OTel` | OTel ring-buffer appender — **deprecated**, superseded by `Nepionic_Log_Klein` |
+| `Nepionic_Log_Klein` | Klein Event ring-buffer appender (consumed by the Klein collector's `ads` receiver) |
 | `Nepionic_Log_Syslog` | UDP RFC 5424 syslog appender |
 
-Add only the libraries you need. `Nepionic_Log_OTel` and `Nepionic_Log_Syslog` both depend on `Nepionic_Log`.
+Add only the libraries you need. `Nepionic_Log_OTel`, `Nepionic_Log_Klein`, and `Nepionic_Log_Syslog` all depend on `Nepionic_Log`.
 
 ---
 
@@ -31,10 +32,11 @@ DefaultLogger           DefaultLogger           DefaultLogger
                          │  Reentrancy  │
                          │    guard     │
                          └──────┬───────┘
-               ┌────────────────┼────────────────┐
-               ▼                ▼                ▼
-       AdsLogAppender   OTelLogAppender   SyslogAppender
-     (ADS output window) (ring buffer)    (UDP syslog)
+       ┌────────────────┬───────┴────────┬────────────────┐
+       ▼                ▼                ▼                ▼
+AdsLogAppender  OTelLogAppender  KleinEventAppender  SyslogAppender
+(ADS output win) (ring buffer,   (ring buffer,        (UDP syslog)
+                  deprecated)     -> Klein Event)
 ```
 
 `GetLogManager()` is a `FUNCTION` with a `VAR_STAT` instance — no GVL, no declaration needed.
@@ -47,7 +49,8 @@ DefaultLogger           DefaultLogger           DefaultLogger
 
 In your TwinCAT project, add references to:
 - `Nepionic_Log`
-- `Nepionic_Log_OTel` *(optional)*
+- `Nepionic_Log_Klein` *(optional — recommended for Klein-based collectors)*
+- `Nepionic_Log_OTel` *(optional, deprecated — see above)*
 - `Nepionic_Log_Syslog` *(optional)*
 
 ### 2. Declare appenders and loggers
@@ -55,8 +58,8 @@ In your TwinCAT project, add references to:
 ```st
 // In a PROGRAM or FB that runs at startup
 VAR
-    ads_appender  : Nepionic_Log.AdsLogAppender;
-    otel_appender : Nepionic_Log_OTel.OTelLogAppender;
+    ads_appender   : Nepionic_Log.AdsLogAppender;
+    klein_appender : Nepionic_Log_Klein.KleinEventAppender;
 END_VAR
 ```
 
@@ -72,7 +75,7 @@ END_VAR
 ```st
 // Called once — e.g. from FB_Init or a startup PROGRAM
 Nepionic_Log.GetLogManager().Register(ads_appender);
-Nepionic_Log.GetLogManager().Register(otel_appender);
+Nepionic_Log.GetLogManager().Register(klein_appender);
 ```
 
 ### 4. Log from anywhere
@@ -85,7 +88,7 @@ log.Error('Drive fault detected');
 log.Fatal('Safety circuit open');
 ```
 
-That's it. No cyclic wiring required for `AdsLogAppender` or `OTelLogAppender`.
+That's it. No cyclic wiring required for `AdsLogAppender`, `OTelLogAppender`, or `KleinEventAppender`.
 
 ---
 
@@ -183,7 +186,10 @@ Output format: `[source] message  {key=value, key=value}`
 
 ---
 
-### OTelLogAppender (`Nepionic_Log_OTel`)
+### OTelLogAppender (`Nepionic_Log_OTel`) — deprecated
+
+**Deprecated.** Superseded by `Nepionic_Log_Klein.KleinEventAppender` below. Kept for existing
+consumers; new projects should reference `Nepionic_Log_Klein` instead.
 
 Writes structured log entries into an owned `OTelLogRing` ring buffer, exposed as an ADS symbol and polled by the `otelcol-ads` Go collector. No cyclic call needed.
 
@@ -205,6 +211,46 @@ receivers:
 ```
 
 All 10 structured attributes are preserved in the OTel log record.
+
+---
+
+### KleinEventAppender (`Nepionic_Log_Klein`)
+
+Writes structured log entries into an owned `KleinEventRing` ring buffer — the same proven
+seqlock wire layout as `OTelLogRing`, under new independently-addressable types — exposed as
+an ADS symbol and read by [Klein's](https://github.com/siyka-au/klein) `ads` receiver
+(`internal/receiver/ads/eventring.go`), which decodes each slot into a Klein `model.Event`. No
+cyclic call needed.
+
+```st
+VAR
+    klein_appender : Nepionic_Log_Klein.KleinEventAppender;
+END_VAR
+
+Nepionic_Log.GetLogManager().Register(klein_appender);
+```
+
+Point the Klein collector at the ring symbol. If the appender is declared in `MAIN`:
+
+```yaml
+# Klein ads receiver config
+receivers:
+  ads:
+    event_rings:
+      - symbol: MAIN.klein_appender.ring
+```
+
+Mapping onto the resulting `model.Event` (documented byte-for-byte in `KleinEventEntry.TcDUT`):
+
+| Log record field | Klein `Event` field |
+|---|---|
+| `level` | `Severity` (`Debug`→2, `Information`→3, `Warning`→4, `Error`→5, `Fatal`→6) |
+| `message` | `Message` |
+| `source` | `Signal.Path`, and `Actor.ID` (`Actor.Type` is fixed to `"plc"`) |
+| `attributes` (when any) | `To`, as a `StructValue{Fields: {key: value, ...}}` |
+
+All 10 structured attributes are preserved. An entry with zero attributes leaves `Event.To` unset
+rather than emitting an empty struct.
 
 ---
 
@@ -235,13 +281,13 @@ syslog_appender.Level   := Nepionic_Log.LogLevel.Warning;
 
 ## Level reference
 
-| `LogLevel` | Value | Syslog severity | OTel severity |
-|---|---|---|---|
-| `Debug` | 0 | 7 (Debug) | 0 |
-| `Information` | 1 | 6 (Informational) | 1 |
-| `Warning` | 2 | 4 (Warning) | 2 |
-| `Error` | 3 | 3 (Error) | 3 |
-| `Fatal` | 4 | 2 (Critical) | 4 |
+| `LogLevel` | Value | Syslog severity | OTel severity | Klein `model.Severity` |
+|---|---|---|---|---|
+| `Debug` | 0 | 7 (Debug) | 0 | `SeverityDebug` (2) |
+| `Information` | 1 | 6 (Informational) | 1 | `SeverityInfo` (3) |
+| `Warning` | 2 | 4 (Warning) | 2 | `SeverityWarn` (4) |
+| `Error` | 3 | 3 (Error) | 3 | `SeverityError` (5) |
+| `Fatal` | 4 | 2 (Critical) | 4 | `SeverityFatal` (6) |
 
 ---
 
@@ -251,7 +297,7 @@ syslog_appender.Level   := Nepionic_Log.LogLevel.Warning;
 PROGRAM StartupLogger
 VAR
     ads_appender    : Nepionic_Log.AdsLogAppender;
-    otel_appender   : Nepionic_Log_OTel.OTelLogAppender;
+    klein_appender  : Nepionic_Log_Klein.KleinEventAppender;
     syslog_appender : Nepionic_Log_Syslog.SyslogAppender('10.0.0.50', 514);
     initialized     : BOOL;
 END_VAR
@@ -265,7 +311,7 @@ IF NOT initialized THEN
     syslog_appender.Level := Nepionic_Log.LogLevel.Warning;
 
     Nepionic_Log.GetLogManager().Register(ads_appender);
-    Nepionic_Log.GetLogManager().Register(otel_appender);
+    Nepionic_Log.GetLogManager().Register(klein_appender);
     Nepionic_Log.GetLogManager().Register(syslog_appender);
 
     initialized := TRUE;

@@ -1,0 +1,128 @@
+<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1">
+  <POU Name="KleinEventAppender" Id="{634843c3-bb93-4caa-bda3-9bdca79e4fd3}" SpecialFunc="None">
+    <Declaration><![CDATA[{attribute 'linkalways'}
+{attribute 'no_explicit_call' := 'This FB is a CLASS and must be accessed using methods or properties'}
+{attribute 'enable_dynamic_creation'}
+/// Klein Event appender for Nepionic_Log.
+/// Implements `LogAppender` by writing structured log entries directly into its
+/// own `KleinEventRing` field (`ring`), which is exposed as an ADS symbol and
+/// consumed by the Go Klein collector's ADS receiver
+/// (github.com/siyka-au/klein, internal/receiver/ads/eventring.go), which
+/// decodes each slot into a Klein `model.Event` — see KleinEventEntry.TcDUT's
+/// doc comment for the exact severity/attribute/actor mapping.
+///
+/// The ring is owned by the appender — no external ring declaration is needed.
+/// Just declare the appender in a PROGRAM or GVL so TwinCAT generates an ADS
+/// symbol for it, then point the Klein collector's `ads` receiver at
+/// `<PROGRAM>.<var_name>.ring` via an `event_rings` config entry.
+///
+/// This is the replacement for the deprecated `Nepionic_Log_OTel.OTelLogAppender`
+/// (see that type's doc comment) — same seqlock ring-buffer pattern, same wire
+/// shape, but decoded into a Klein `Event` instead of an OTel log record.
+///
+/// Usage:
+/// ```st
+/// // startup (e.g. MAIN FB_Init)
+/// GetLogManager().Register(klein_appender);
+///
+/// // Klein ads receiver config:
+/// //   event_rings:
+/// //     - symbol: MAIN.klein_appender.ring
+/// ```
+FUNCTION_BLOCK PUBLIC KleinEventAppender IMPLEMENTS Nepionic_Log.LogAppender
+VAR
+	{attribute 'klein_role' := 'event_ring'}
+	ring : KleinEventRing;
+	_level : Nepionic_Log.LogLevel := Nepionic_Log.LogLevel.Debug;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[]]></ST>
+    </Implementation>
+    <Method Name="Append" Id="{bdb6a11c-097f-41f8-9504-9ca350c5c92a}">
+      <Declaration><![CDATA[METHOD PUBLIC Append : BOOL
+VAR_INPUT
+	level : Nepionic_Log.LogLevel;
+	message : Tc2_System.T_MaxString;
+	source : Tc2_System.T_MaxString;
+	attributes : ARRAY[0..9] OF Nepionic_Log.LogAttribute;
+	attribute_count : USINT;
+END_VAR
+VAR
+	slot_idx : UDINT;
+	expected_gen : UDINT;
+	file_time : ULINT;
+	i : USINT;
+END_VAR]]></Declaration>
+      <Implementation>
+        <ST><![CDATA[slot_idx := ring.head MOD ring.capacity;
+expected_gen := (ring.head / ring.capacity + 1) * 2;
+
+// Mark slot as being written (ODD sequence = write in progress)
+ring.entries[slot_idx].sequence := expected_gen - 1;
+
+// Timestamp — Windows FILETIME → Unix nanoseconds
+file_time := Tc2_Utilities.F_GetSystemTime();
+ring.entries[slot_idx].timestamp := (file_time - 116444736000000000) * 100;
+
+// Severity — raw PLC LogLevel ordinal (0..4). Decoded on the Go side into
+// model.Severity per the mapping documented in KleinEventEntry.TcDUT:
+//   Debug=0 -> SeverityDebug(2), Information=1 -> SeverityInfo(3),
+//   Warning=2 -> SeverityWarn(4), Error=3 -> SeverityError(5), Fatal=4 -> SeverityFatal(6).
+CASE level OF
+	Nepionic_Log.LogLevel.Debug:
+		ring.entries[slot_idx].severity := 0;
+	Nepionic_Log.LogLevel.Information:
+		ring.entries[slot_idx].severity := 1;
+	Nepionic_Log.LogLevel.Warning:
+		ring.entries[slot_idx].severity := 2;
+	Nepionic_Log.LogLevel.Error:
+		ring.entries[slot_idx].severity := 3;
+	Nepionic_Log.LogLevel.Fatal:
+		ring.entries[slot_idx].severity := 4;
+ELSE
+	ring.entries[slot_idx].severity := 1;
+END_CASE
+
+// Payload — `source` becomes the resulting Klein Event's Signal.Path and
+// Actor.ID (Actor.Type is fixed to "plc" on the Go side); `attributes`
+// becomes the Event's To (a StructValue) when attribute_count > 0.
+ring.entries[slot_idx].message := message;
+ring.entries[slot_idx].source := source;
+ring.entries[slot_idx].attribute_count := USINT_TO_UDINT(attribute_count);
+FOR i := 0 TO 9 DO
+	ring.entries[slot_idx].attributes[i] := attributes[i];
+END_FOR
+
+// Commit slot (EVEN sequence = ready for reader)
+ring.entries[slot_idx].sequence := expected_gen;
+
+// Increment overflow counter each time the write pointer wraps back to slot 0.
+IF slot_idx = 0 AND ring.head > 0 THEN
+	ring.overflow_cnt := ring.overflow_cnt + 1;
+END_IF
+
+// Advance write cursor
+ring.head := ring.head + 1;
+
+Append := TRUE;]]></ST>
+      </Implementation>
+    </Method>
+    <Property Name="Level" Id="{461d2c95-6e0f-4138-9c3b-45af46b46e85}">
+      <Declaration><![CDATA[{attribute 'monitoring' := 'call'}
+PROPERTY PUBLIC Level : Nepionic_Log.LogLevel]]></Declaration>
+      <Get Name="Get" Id="{f5992988-cf73-4e87-92c8-d360a61343a3}">
+        <Declaration><![CDATA[PUBLIC]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[Level := _level;]]></ST>
+        </Implementation>
+      </Get>
+      <Set Name="Set" Id="{a7bfa60e-1fde-48e8-8e42-5b23e5c69e65}">
+        <Declaration><![CDATA[PUBLIC]]></Declaration>
+        <Implementation>
+          <ST><![CDATA[_level := Level;]]></ST>
+        </Implementation>
+      </Set>
+    </Property>
+  </POU>
+</TcPlcObject>

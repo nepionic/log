@@ -4,6 +4,12 @@
     <Declaration><![CDATA[{attribute 'linkalways'}
 {attribute 'no_explicit_call' := 'This FB is a CLASS and must be accessed using methods or properties'}
 {attribute 'enable_dynamic_creation'}
+// DEPRECATED: superseded by Nepionic_Log_Klein.KleinEventAppender, which writes the
+// same proven seqlock ring-buffer wire shape into a KleinEventEntry/KleinEventRing pair
+// consumed by the Klein collector's ADS receiver (github.com/siyka-au/klein,
+// internal/receiver/ads/eventring.go) instead of otelcol-ads. New projects should
+// reference Nepionic_Log_Klein instead of Nepionic_Log_OTel. This library is kept for
+// existing consumers and is not scheduled for removal.
 /// OTel log appender for Nepionic_Log.
 /// Implements `LogAppender` by writing structured log entries directly into its
 /// own `OTelLogRing` field (`Ring`), which is exposed as an ADS symbol and

@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<TcSmProject xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4026.22">
+	<Project ProjectGUID="{C7FE6F46-15BE-4C61-94D2-7FA31DDD947C}" TargetNetId="199.4.42.250.1.1" Target64Bit="true" ShowHideConfigurations="#x6">
+		<Plc>
+			<Project GUID="{4B11B93A-10FD-4D4A-AD15-1C39D9AEE8A1}" Name="Nepionic_Log_Klein" PrjFilePath="Nepionic_Log_Klein.plcproj" TmcFilePath="Nepionic_Log_Klein.tmc" ReloadTmc="true" AmsPort="851" FileArchiveSettings="#x000e"/>
+		</Plc>
+	</Project>
+</TcSmProject>
