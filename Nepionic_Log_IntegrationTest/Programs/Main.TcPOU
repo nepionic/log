@@ -1,0 +1,148 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<TcPlcObject Version="1.1.0.1" ProductVersion="3.1.4026.18">
+  <POU Name="Main" Id="{a5a64f19-3c0b-463a-9a05-c0e173e3c631}" SpecialFunc="None">
+    <Declaration><![CDATA[/// Integration test: self-cleaning reverse-flow sand filter.
+///
+/// Wires the FilterSimulation to the Nepionic Log + Metrics OTel bridge.
+/// Both the log ring and metric ring are exposed as ADS symbols — point
+/// the otelcol-ads collector at:
+///   Logs    : Main.log_appender.ring
+///   Metrics : Main.metric_ring
+PROGRAM Main
+VAR
+    // ── OTel log backend ───────────────────────────────────────────────────────
+    log_appender : Nepionic_Log_OTel.OTelLogAppender;
+
+    // ── OTel metrics backend ───────────────────────────────────────────────────
+    metric_core : Nepionic_Metrics_OTel.OTelMetricCore;
+
+    // ── Application logger ─────────────────────────────────────────────────────
+    logger : Nepionic_Log.DefaultLogger('SandFilter.Controller');
+
+    // ── Filter simulation ──────────────────────────────────────────────────────
+    config : FilterConfig;    // Uses DUT default values; tune at runtime.
+    sim : FilterSimulation;
+
+    // ── Metric publish interval (real time, independent of sim time_scale) ─────
+    metric_timer : TON;
+
+    // ── One-shot initialisation guard ─────────────────────────────────────────
+    initialised : BOOL;
+
+    // ── Metric attribute scratch buffers ──────────────────────────────────────
+    m_attrs : ARRAY[0..4] OF Nepionic_Metrics.MetricAttribute;
+    m_empty : ARRAY[0..4] OF Nepionic_Metrics.MetricAttribute;
+	
+	trigger_div_zero : BOOL;
+	_div_zero : FLOAT;
+	
+	heartbeat_timer : TOn;
+END_VAR]]></Declaration>
+    <Implementation>
+      <ST><![CDATA[// ── One-time initialisation ───────────────────────────────────────────────────
+IF NOT initialised THEN
+    Nepionic_Log.GetLogManager().Register(log_appender);
+    initialised := TRUE;
+    logger.Info('Sand filter OTel integration test initialised');
+END_IF
+
+// ── Run filter simulation ─────────────────────────────────────────────────────
+sim(Config := config);
+
+// ── Log on state-transition events ───────────────────────────────────────────
+// DP threshold crossed — backwash is about to begin.
+IF sim.EvFilterBlocked THEN
+    logger
+        .WithAttribute('state', 'Filtering')
+        .Warning('Differential pressure exceeded backwash threshold - scheduling backwash cycle');
+END_IF
+
+// Module A backwash valve just opened.
+IF sim.EvBackwashStartedA THEN
+    logger
+        .WithAttribute('module', 'A')
+        .WithAttribute('valve',  'reverse_flow_A')
+        .Info('Backwash started - Module A reverse-flow valve open, waste port active');
+END_IF
+
+// Module B backwash valve just opened.
+IF sim.EvBackwashStartedB THEN
+    logger
+        .WithAttribute('module', 'B')
+        .WithAttribute('valve',  'reverse_flow_B')
+        .Info('Backwash started - Module B reverse-flow valve open, waste port active');
+END_IF
+
+// Both modules cleaned; filter bank back in service.
+IF sim.EvBackwashComplete THEN
+    logger
+        .WithAttribute('cycles_completed', UDINT_TO_STRING(sim.BackwashCycles))
+        .Info('Full backwash cycle complete - both modules clean, differential pressure at nominal');
+END_IF
+
+// ── Publish metrics every second (real time) ──────────────────────────────────
+metric_timer(IN := TRUE, PT := T#1S);
+IF metric_timer.Q THEN
+    metric_timer(IN := FALSE); // reset for next interval
+
+    // Pump flow
+    metric_core.Record(
+        'filter.flow_rate', 'L/min',
+        sim.PumpFlowLpm,
+        Nepionic_Metrics.MetricKind.Gauge, m_empty, 0);
+
+    // Filter bank pressures
+    metric_core.Record(
+        'filter.pressure.inlet', 'bar',
+        sim.PressureInletBar,
+        Nepionic_Metrics.MetricKind.Gauge, m_empty, 0);
+
+    metric_core.Record(
+        'filter.pressure.outlet', 'bar',
+        sim.PressureOutletBar,
+        Nepionic_Metrics.MetricKind.Gauge, m_empty, 0);
+
+    metric_core.Record(
+        'filter.pressure.differential', 'bar',
+        sim.DpBar,
+        Nepionic_Metrics.MetricKind.Gauge, m_empty, 0);
+
+    // Blockage fraction — key indicator driving the backwash trigger
+    metric_core.Record(
+        'filter.blockage_fraction', '1',
+        sim.BlockageFraction,
+        Nepionic_Metrics.MetricKind.Gauge, m_empty, 0);
+
+    // Monotonically increasing backwash cycle counter
+    metric_core.Record(
+        'filter.backwash.cycles_total', '{cycles}',
+        UDINT_TO_LREAL(sim.BackwashCycles),
+        Nepionic_Metrics.MetricKind.Counter, m_empty, 0);
+
+    // Per-module backwash valve state (0=closed, 1=open), labelled by module
+    m_attrs[0].key := 'module'; m_attrs[0].value := 'A';
+    metric_core.Record(
+        'filter.valve.backwash_active', '1',
+        SEL(sim.ValveAOpen, 0.0, 1.0),
+        Nepionic_Metrics.MetricKind.Gauge, m_attrs, 1);
+
+    m_attrs[0].value := 'B';
+    metric_core.Record(
+        'filter.valve.backwash_active', '1',
+        SEL(sim.ValveBOpen, 0.0, 1.0),
+        Nepionic_Metrics.MetricKind.Gauge, m_attrs, 1);
+END_IF
+
+IF trigger_div_zero THEN
+	trigger_div_zero := FALSE;
+	_div_zero := 1 / _div_zero;
+END_IF
+
+heartbeat_timer(In := NOT heartbeat_timer.Q, PT := T#5S);
+IF heartbeat_timer.Q THEN
+    log_appender.Heartbeat();
+	metric_core.Heartbeat();
+END_IF]]></ST>
+    </Implementation>
+  </POU>
+</TcPlcObject>

@@ -1,4 +1,0 @@
-<?xml version="1.0"?>
-<TcSmItem xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4026.22" ClassName="CNestedPlcProjDef">
-	<Project GUID="{B6BA5DCF-D088-4DF1-A43B-F502304C773B}" Name="Nepionic_Metrics_OTel" PrjFilePath="..\..\Nepionic_Metrics_OTel\Nepionic_Metrics_OTel.plcproj" TmcFilePath="..\..\Nepionic_Metrics_OTel\Nepionic_Metrics_OTel.tmc" ReloadTmc="true" AmsPort="851" FileArchiveSettings="#x000e"/>
-</TcSmItem>

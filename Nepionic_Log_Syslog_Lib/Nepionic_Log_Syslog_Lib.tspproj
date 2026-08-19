@@ -1,0 +1,8 @@
+<?xml version="1.0"?>
+<TcSmProject xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:noNamespaceSchemaLocation="http://www.beckhoff.com/schemas/2012/07/TcSmProject" TcSmVersion="1.0" TcVersion="3.1.4026.25">
+	<Project ProjectGUID="{9CBEF45D-6EE2-400A-840F-1391F08055AD}" TargetNetId="199.4.42.250.1.1" Target64Bit="true" ShowHideConfigurations="#x6">
+		<Plc>
+			<Project GUID="{D4780FAF-E408-4C28-88B7-E59800A4638B}" Name="Nepionic_Log_Syslog" PrjFilePath="Nepionic_Log_Syslog.plcproj" TmcFilePath="Nepionic_Log_Syslog.tmc" ReloadTmc="true" AmsPort="851" FileArchiveSettings="#x000e"/>
+		</Plc>
+	</Project>
+</TcSmProject>
